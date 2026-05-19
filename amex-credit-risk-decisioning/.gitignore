@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.venv/
+venv/
+env/
+.env
+*.duckdb
+*.duckdb.wal
+data/raw/
+data/full/
+data/private/
+models/
+*.pkl
+*.joblib
+*.parquet
