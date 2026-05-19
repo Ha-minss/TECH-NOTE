@@ -11,6 +11,7 @@ This repository keeps portfolio-ready notebooks, derived result tables, and repr
 | [xente-credit-feature-adoption](./xente-credit-feature-adoption) | Credit scoring, feature adoption, model validation | EDA, grouped validation, LR-WOE, LightGBM, SHAP |
 | [dominicks-price-elasticity-iv-dml](./dominicks-price-elasticity-iv-dml) | Price elasticity, causal inference | FE-IV, dynamic IV, FD-PLIV-DML |
 | [amex-credit-risk-decisioning](./amex-credit-risk-decisioning) | Credit risk decisioning, review prioritization | Risk ranking, Top-K policy, cost-sensitive simulation |
+| [thailand-policy-revenue-persistence](./thailand-policy-revenue-persistence) | Policy shock, revenue persistence, merchant credit | Policy calendar, distributed lag, event study, placebo, robustness |
 
 ## How to Read
 
