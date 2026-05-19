@@ -1,87 +1,66 @@
 # AMEX Credit Risk Decisioning Portfolio
 
-AMEX default prediction scores are converted into a manual review decisioning workflow.
+AMEX default prediction score를 manual review decisioning workflow로 바꾼 프로젝트입니다.
 
-The project does not present the score as a fully calibrated probability of default. Instead, it treats the score as a ranking-oriented signal for review prioritization, policy simulation, and monitoring.
+## Question
 
-## Project Question
-
-Given limited review capacity, which customers should the risk team review first?
-
-## Public Repository Design
-
-The original Colab experiment used large AMEX customer-month parquet files, feature engineering, several model families, and blended OOF scores. Those raw files and full training artifacts are not included in this public repository.
-
-This public version focuses on the decisioning layer using:
-
-- masked public score samples,
-- aggregate risk bucket outputs,
-- Top-K policy simulation tables,
-- weighted non-default correction tables,
-- normalized cost scenario outputs.
+제한된 review capacity에서 어떤 고객을 먼저 검토해야 하는가?
 
 ## Key Results
 
 - D1 default rate: **96.59%**
 - D10 default rate: **0.04%**
-- Best Base scenario threshold: **Top 17%**
+- Base scenario best threshold: **Top 17%**
 - Base normalized net benefit: **4,365.15**
 
 ## Notebook Flow
 
-1. `01_project_overview_and_score_release.ipynb`
-   - public artifact inventory
-   - masked score sample check
-   - original pipeline summary
+1. `01_preprocessing.ipynb`
+   - customer-month 데이터를 customer-level feature matrix로 바꾸는 변수 설계
+   - base, change, temporal, missing, categorical feature layer
 
-2. `02_risk_ranking_validation.ipynb`
+2. `02_modeling.ipynb`
+   - LightGBM, XGBoost, CatBoost, MLP, meta model, equal blend 구조
+   - final score table, risk rank, risk band
+
+3. `03_validation.ipynb`
    - risk decile validation
    - risk band monitoring
    - cumulative default capture
 
-3. `03_policy_simulation_and_cost_scenarios.ipynb`
-   - Top-K review trade-off
-   - weighted non-default correction
-   - normalized net benefit scenario comparison
-   - final policy interpretation
+4. `04_scenario.ipynb`
+   - Top-K review policy
+   - 20x non-default workload correction
+   - normalized net benefit scenario
 
 ## Main Figures
 
-### Risk Bucket / Decile Validation
-
 ![Risk bucket decile validation](outputs/figures/risk_bucket_decile_validation.png)
-
-The highest-risk decile, D1, shows a 96.59% observed default rate, while the lowest-risk decile, D10, shows a 0.04% observed default rate.
-
-### Normalized Net Benefit by Review Scope
 
 ![Normalized net benefit](outputs/figures/normalized_net_benefit_by_review_scope.png)
 
-Under the Base scenario, Top 17% produces the strongest normalized net benefit.
-
-## Repository Structure
+## Structure
 
 ```text
-amex-credit-risk-portfolio-public/
+amex-credit-risk-decisioning/
 |-- README.md
 |-- requirements.txt
 |-- notebooks/
-|   |-- 01_project_overview_and_score_release.ipynb
-|   |-- 02_risk_ranking_validation.ipynb
-|   `-- 03_policy_simulation_and_cost_scenarios.ipynb
-|-- outputs/
-|   |-- figures/
-|   `-- tables/
+|   |-- 01_preprocessing.ipynb
+|   |-- 02_modeling.ipynb
+|   |-- 03_validation.ipynb
+|   `-- 04_scenario.ipynb
 |-- data/
 |   |-- README.md
 |   `-- sample/
+|-- outputs/
+|   |-- figures/
+|   `-- tables/
 |-- src/
 |   |-- preprocessing/
 |   |-- modeling/
 |   `-- evaluation/
 `-- docs/
-    |-- technical_note.md
-    `-- governance_and_limitations.md
 ```
 
 ## Run
@@ -97,9 +76,10 @@ $env:JUPYTER_RUNTIME_DIR=(Resolve-Path .tmp\.jupyter-runtime).Path
 $env:JUPYTER_ALLOW_INSECURE_WRITES='1'
 
 $notebooks = @(
-  "notebooks/01_project_overview_and_score_release.ipynb",
-  "notebooks/02_risk_ranking_validation.ipynb",
-  "notebooks/03_policy_simulation_and_cost_scenarios.ipynb"
+  "notebooks/01_preprocessing.ipynb",
+  "notebooks/02_modeling.ipynb",
+  "notebooks/03_validation.ipynb",
+  "notebooks/04_scenario.ipynb"
 )
 
 foreach ($nb in $notebooks) {
@@ -107,6 +87,6 @@ foreach ($nb in $notebooks) {
 }
 ```
 
-## Governance Note
+## Governance
 
-This is a portfolio prototype for manual review prioritization and monitoring support. It is not an automatic adverse-action system. Production use would require calibration validation, drift monitoring, compliance review, fairness checks, access control, and audit logging.
+이 프로젝트는 manual review prioritization과 monitoring을 위한 portfolio prototype입니다. 자동 거절 시스템이 아니며, production 적용 전 calibration, drift, fairness, compliance, audit logging 검증이 필요합니다.

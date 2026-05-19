@@ -1,11 +1,11 @@
 # Data
 
-Full AMEX customer-level files are not included in this public portfolio repository.
+Raw AMEX customer-month files are not included.
 
-The repository includes only:
+Included files:
 
-- masked score samples under `data/sample/`
-- aggregate output tables under `outputs/tables/`
-- generated figures under `outputs/figures/`
+- `data/sample/public_sample_scores.csv`
+- `outputs/tables/*.csv`
+- `outputs/figures/*.png`
 
-The original project used anonymized AMEX customer-month data and generated customer-level risk scores. Public files are limited to masked samples and aggregate decisioning outputs.
+The raw experiment used AMEX parquet data and train labels. The public repository keeps masked score samples and aggregate decisioning outputs.
