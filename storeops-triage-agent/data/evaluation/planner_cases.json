@@ -1,0 +1,111 @@
+[
+  {
+    "case_id": "PLAN-001",
+    "query": "카드 결제가 계속 실패해요. 단말기에 승인 오류라고 떠요.",
+    "top_k": 3,
+    "required_data_needs": ["approval_failure_history", "terminal_inventory", "recent_change_summary"],
+    "forbidden_data_needs": ["pos_front_connection_history", "support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": ["failed_physical_terminal", "visible_error_message"]
+  },
+  {
+    "case_id": "PLAN-002",
+    "query": "어제 새 단말기 설치했는데 기존 단말기에서 카드 승인이 안 돼요.",
+    "top_k": 3,
+    "required_data_needs": [
+      "terminal_inventory",
+      "payment_identifier_config",
+      "activation_timeline",
+      "approval_failure_history"
+    ],
+    "forbidden_data_needs": ["pos_front_connection_history", "support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": []
+  },
+  {
+    "case_id": "PLAN-003",
+    "query": "기기를 바꾼 뒤부터 승인 오류가 떠요. 단말기 번호가 맞는지 확인해달래요.",
+    "top_k": 3,
+    "required_data_needs": [
+      "terminal_inventory",
+      "terminal_identity_record",
+      "payment_identifier_config",
+      "approval_failure_history"
+    ],
+    "forbidden_data_needs": ["pos_front_connection_history", "support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": []
+  },
+  {
+    "case_id": "PLAN-004",
+    "query": "가맹점 번호 미등록이라고 뜨면서 결제가 안 돼요.",
+    "top_k": 3,
+    "required_data_needs": [
+      "merchant_registration_status",
+      "approval_failure_history",
+      "payment_identifier_config",
+      "terminal_identity_record"
+    ],
+    "forbidden_data_needs": ["pos_front_connection_history", "support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": []
+  },
+  {
+    "case_id": "PLAN-005",
+    "query": "POS에서 결제 눌러도 단말기로 금액이 안 넘어가요.",
+    "top_k": 3,
+    "required_data_needs": ["pos_front_connection_history", "request_delivery_history"],
+    "forbidden_data_needs": ["merchant_registration_status", "support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": []
+  },
+  {
+    "case_id": "PLAN-006",
+    "query": "결제가 안 돼요.",
+    "top_k": 3,
+    "required_data_needs": ["approval_failure_history", "terminal_inventory", "recent_change_summary"],
+    "forbidden_data_needs": [
+      "merchant_registration_status",
+      "pos_front_connection_history",
+      "support_route"
+    ],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": ["failed_physical_terminal", "visible_error_message"]
+  },
+  {
+    "case_id": "PLAN-007",
+    "query": "오류가 뜨긴 했는데 문구는 기억이 안 나요.",
+    "top_k": 3,
+    "required_data_needs": ["approval_failure_history", "terminal_inventory"],
+    "forbidden_data_needs": ["support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": ["visible_error_message"]
+  },
+  {
+    "case_id": "PLAN-008",
+    "query": "매장에 단말기가 여러 개인데 어떤 기기에서 안 되는지 잘 모르겠어요.",
+    "top_k": 3,
+    "required_data_needs": ["terminal_inventory", "approval_failure_history"],
+    "forbidden_data_needs": ["support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": ["failed_physical_terminal"]
+  },
+  {
+    "case_id": "PLAN-009",
+    "query": "현장에서는 결제가 안 된다고 하는데 시스템 기록은 정상처럼 보여요.",
+    "top_k": 3,
+    "required_data_needs": ["approval_failure_history", "terminal_inventory"],
+    "forbidden_data_needs": ["support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": ["visible_error_message"]
+  },
+  {
+    "case_id": "PLAN-010",
+    "query": "단말기는 켜져 있는데 POS 결제가 계속 타임아웃돼요.",
+    "top_k": 3,
+    "required_data_needs": ["pos_front_connection_history", "request_delivery_history"],
+    "forbidden_data_needs": ["support_route"],
+    "forbidden_tool_names": ["get_support_route"],
+    "required_clarification_candidates": []
+  }
+]
