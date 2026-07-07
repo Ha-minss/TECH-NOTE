@@ -85,6 +85,8 @@ Xente는 우간다에서 결제, 쇼핑, 소액 대출·후불결제 서비스�
 
 상환 이력이 없는 고객군은 전체 대출의 약 34%에 불과했지만, 전체 미상환의 약 84.5%가 이 그룹에서 발생했습니다.
 
+![상환 이력 유무별 대출/미상환 분포](outputs/figures/main_01_default_count_by_repayment_segment.png)
+
 따라서 본 프로젝트는 상환 이력이 없는 고객군을 핵심 분석 대상으로 분리하고, 이 그룹 안에서 대출 전 거래 행동이 추가적인 위험 판단 정보를 제공하는지 검증했습니다.
 
 거래 행동 변수는 단순히 “거래 이력이 있는가?”만 보지 않았습니다. 실제 심사 판단에 보조 정보가 되려면 활동성, 최근성, 거래 안정성, 이용 폭을 나누어 봐야 한다고 판단했습니다.
@@ -190,29 +192,6 @@ EDA에서는 그림을 적극적으로 사용합니다. 이 프로젝트에서 R
 | Group Permutation 결과 | 금액·시간·서비스 흐름 변수군이 더 중요 | 거래 행동 변수군의 기여가 작다는 근거 |
 | Score Band 결과 | 고위험 구간 포착률 비교 | 운영에서 중요한 상위 위험군 개선 여부 확인 |
 
-실제 GitHub README에는 현재 저장소에 있는 그림 파일명을 그대로 사용하면 됩니다.
-
-```markdown
-![상환 이력 유무별 대출/미상환 분포](outputs/figures/main_01_default_count_by_repayment_segment.png)
-
-![거래 이력 구간별 미상환율](outputs/figures/main_02_default_rate_by_transaction_history.png)
-
-![상품군별 대출 건수와 미상환 건수](outputs/figures/main_03_product_loan_vs_default_count.png)
-
-![상품군과 대출 공급자 구조](outputs/figures/main_04_product_category_x_loan_issuer.png)
-
-![거래 이력별 구조적 세그먼트 비중](outputs/figures/main_05_structural_share_by_transaction_history.png)
-
-![리테일/공급자 제외 후 미상환율 변화](outputs/figures/main_06_no_prior_txn_structural_exclusion.png)
-
-![서비스 흐름 ID별 미상환 집중](outputs/figures/main_07_service_flow_default_and_product_mix.png)
-
-![거래 행동 변수 추가 가치](outputs/figures/main_08_transaction_incremental_value.png)
-
-![점수 구간별 미상환 포착률](outputs/figures/main_10_score_band_capture_rate.png)
-```
-
-파일명은 실제 저장소의 figure 이름에 맞게 수정하면 됩니다.
 
 ---
 
@@ -244,11 +223,7 @@ EDA에서는 그림을 적극적으로 사용합니다. 이 프로젝트에서 R
 
 하지만 이 단계에서 바로 “거래 이력이 없으면 위험하다”고 결론 내리면 안 됩니다. 거래 이력 없음 그룹 안에 특정 상품군, 대출 공급자, 서비스 흐름이 함께 몰려 있을 수 있기 때문입니다.
 
-README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
-
-```markdown
 ![거래 이력 구간별 미상환율](outputs/figures/main_02_default_rate_by_transaction_history.png)
-```
 
 ---
 
@@ -284,9 +259,6 @@ README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
 
 초기에는 “거래 이력 없음 = 위험”처럼 보였지만, 실제로는 거래 이력 없음 그룹 안에 리테일·대출 공급자 2·서비스 흐름 ID 6이 함께 섞여 있었습니다. 따라서 거래 행동 변수를 핵심 신용평가 변수로 채택하기 전에, 구조적 세그먼트 효과를 반드시 분리해야 합니다.
 
-README에는 이 부분을 다음 그림들로 보여주는 것이 좋습니다.
-
-```markdown
 ![상품군별 대출 건수와 미상환 건수](outputs/figures/main_03_product_loan_vs_default_count.png)
 
 ![상품군과 대출 공급자 구조](outputs/figures/main_04_product_category_x_loan_issuer.png)
@@ -296,7 +268,6 @@ README에는 이 부분을 다음 그림들로 보여주는 것이 좋습니다.
 ![리테일/공급자 제외 후 미상환율 변화](outputs/figures/main_06_no_prior_txn_structural_exclusion.png)
 
 ![서비스 흐름 ID별 미상환 집중](outputs/figures/main_07_service_flow_default_and_product_mix.png)
-```
 
 ---
 
@@ -323,11 +294,7 @@ EDA 이후에는 거래 행동 변수가 실제 모델 성능을 개선하는지
 
 상품·운영 요인을 제거한 진단용 모델과 행동 변수 단독 검증 모델에서는 일부 소폭 개선이 있었지만, 여러 모델과 조건에서 일관된 개선이라고 보기는 어려웠습니다. 따라서 거래 행동 변수를 핵심 신용평가 변수로 채택할 근거는 약했습니다.
 
-README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
-
-```markdown
 ![Basic vs Transaction model performance](outputs/figures/main_08_transaction_incremental_value.png)
-```
 
 ---
 
@@ -349,11 +316,7 @@ Group Permutation 결과는 다음과 같았습니다.
 
 즉, 거래 행동 변수는 EDA에서 유망해 보였지만, 실제 모델 성능에 독립적으로 기여한 핵심 변수군은 아니었습니다.
 
-README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
-
-```markdown
 ![Group permutation importance](outputs/figures/main_08_transaction_incremental_value.png)
-```
 
 ---
 
@@ -367,6 +330,8 @@ README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
 |---|---:|---|
 | Basic | 83.3% | 고위험 구간에서 대부분의 미상환 포착 |
 | Basic + Transaction | 83.3% | 거래 행동 변수 추가 후 개선 없음 |
+
+![점수 구간별 미상환 포착률](outputs/figures/main_10_score_band_capture_rate.png)
 
 즉, 거래 행동 변수를 추가해도 실제 운영에서 중요한 고위험 구간의 미상환 포착력은 개선되지 않았습니다.
 
