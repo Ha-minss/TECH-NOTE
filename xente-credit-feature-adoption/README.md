@@ -184,18 +184,32 @@ EDA에서는 그림을 적극적으로 사용합니다. 이 프로젝트에서 R
 | 리테일과 대출 공급자 2 연결 | 리테일이 특정 대출 공급자와 강하게 연결 | 상품군 효과와 공급자 효과의 결합 확인 |
 | 리테일/공급자 2 제외 후 미상환율 변화 | 거래 이력 없음 그룹의 미상환율이 크게 낮아짐 | 거래 행동 신호가 구조적 착시일 수 있음을 보여줌 |
 | 서비스 흐름 ID별 미상환율 | 서비스 흐름 ID 6에 미상환 집중 | 실제 운영 관리 대상 식별 |
+| 거래 이력별 구조 비중 | 거래 이력 없음 그룹에 리테일·대출 공급자 2가 몰려 있는지 확인 | 거래 행동 신호가 구조적 착시일 수 있음을 시각화 |
+| 리테일/공급자 제외 후 미상환율 변화 | 구조적 세그먼트 제외 후 거래 이력 없음 그룹의 미상환율 하락 | 거래 이력 없음 자체보다 구조적 요인이 중요함을 설명 |
 | 모델 성능 비교 | Basic vs Basic + Transaction 비교 | 거래 행동 변수의 추가 가치 검증 |
 | Group Permutation 결과 | 금액·시간·서비스 흐름 변수군이 더 중요 | 거래 행동 변수군의 기여가 작다는 근거 |
 | Score Band 결과 | 고위험 구간 포착률 비교 | 운영에서 중요한 상위 위험군 개선 여부 확인 |
 
-실제 GitHub README에는 위 그림들을 `outputs/figures/`에 저장한 뒤 아래처럼 삽입하는 방식이 좋습니다.
+실제 GitHub README에는 현재 저장소에 있는 그림 파일명을 그대로 사용하면 됩니다.
 
 ```markdown
-![No repayment history concentration](outputs/figures/eda_no_repayment_history_concentration.png)
+![상환 이력 유무별 대출/미상환 분포](outputs/figures/main_01_default_count_by_repayment_segment.png)
 
-![Default rate by transaction history bucket](outputs/figures/eda_default_rate_by_transaction_bucket.png)
+![거래 이력 구간별 미상환율](outputs/figures/main_02_default_rate_by_transaction_history.png)
 
-![Default concentration by service flow](outputs/figures/eda_service_flow_default_concentration.png)
+![상품군별 대출 건수와 미상환 건수](outputs/figures/main_03_product_loan_vs_default_count.png)
+
+![상품군과 대출 공급자 구조](outputs/figures/main_04_product_category_x_loan_issuer.png)
+
+![거래 이력별 구조적 세그먼트 비중](outputs/figures/main_05_structural_share_by_transaction_history.png)
+
+![리테일/공급자 제외 후 미상환율 변화](outputs/figures/main_06_no_prior_txn_structural_exclusion.png)
+
+![서비스 흐름 ID별 미상환 집중](outputs/figures/main_07_service_flow_default_and_product_mix.png)
+
+![거래 행동 변수 추가 가치](outputs/figures/main_08_transaction_incremental_value.png)
+
+![점수 구간별 미상환 포착률](outputs/figures/main_10_score_band_capture_rate.png)
 ```
 
 파일명은 실제 저장소의 figure 이름에 맞게 수정하면 됩니다.
@@ -233,7 +247,7 @@ EDA에서는 그림을 적극적으로 사용합니다. 이 프로젝트에서 R
 README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
 
 ```markdown
-![거래 이력 구간별 미상환율](outputs/figures/eda_default_rate_by_transaction_history_bucket.png)
+![거래 이력 구간별 미상환율](outputs/figures/main_02_default_rate_by_transaction_history.png)
 ```
 
 ---
@@ -273,11 +287,15 @@ README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
 README에는 이 부분을 다음 그림들로 보여주는 것이 좋습니다.
 
 ```markdown
-![상품군별 대출 건수와 미상환 건수](outputs/figures/eda_defaults_by_product_category.png)
+![상품군별 대출 건수와 미상환 건수](outputs/figures/main_03_product_loan_vs_default_count.png)
 
-![리테일과 대출 공급자 2의 연결](outputs/figures/eda_retail_provider2_concentration.png)
+![상품군과 대출 공급자 구조](outputs/figures/main_04_product_category_x_loan_issuer.png)
 
-![서비스 흐름 ID별 미상환 집중](outputs/figures/eda_service_flow_default_concentration.png)
+![거래 이력별 구조적 세그먼트 비중](outputs/figures/main_05_structural_share_by_transaction_history.png)
+
+![리테일/공급자 제외 후 미상환율 변화](outputs/figures/main_06_no_prior_txn_structural_exclusion.png)
+
+![서비스 흐름 ID별 미상환 집중](outputs/figures/main_07_service_flow_default_and_product_mix.png)
 ```
 
 ---
@@ -308,7 +326,7 @@ EDA 이후에는 거래 행동 변수가 실제 모델 성능을 개선하는지
 README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
 
 ```markdown
-![Basic vs Transaction model performance](outputs/figures/model_basic_vs_transaction_performance.png)
+![Basic vs Transaction model performance](outputs/figures/main_08_transaction_incremental_value.png)
 ```
 
 ---
@@ -334,7 +352,7 @@ Group Permutation 결과는 다음과 같았습니다.
 README에는 이 부분을 다음 그림으로 보여주는 것이 좋습니다.
 
 ```markdown
-![Group permutation importance](outputs/figures/model_group_permutation_importance.png)
+![Group permutation importance](outputs/figures/main_08_transaction_incremental_value.png)
 ```
 
 ---
