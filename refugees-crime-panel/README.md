@@ -1,71 +1,367 @@
-# Refugee Inflows → Crime Rates (Country-Year Panel, 2013–2022)
+# Refugee Inflows → Crime Rates
 
-Refugee inflows are often claimed to affect public safety, but cross-country evidence is mixed. Using a country–year panel (2013–2022), we test whether higher refugees per 100k are associated with changes in crime rates. The results show no robust positive relationship with violent, narcotic, or sexual crime, and the baseline property-crime correlation weakens once country-specific trends are included.
+난민 유입 규모와 범죄율 변화 사이의 관계를 국가-연도 패널 데이터로 분석한 계량경제학 프로젝트입니다.
 
-This repository provides a reproducible panel-data analysis using two-way fixed effects (country + year) with country-clustered standard errors, plus dynamic lag/lead placebo checks and robustness tests (country-specific trends, year-drop sensitivity, first differences).
-- **Study window:** 2013–2022  
-- **Unit:** country × year  
-- **Inference:** clustered SE by country  
-- **Scope:** refugees-only specifications (logged per-100k rates)
+이 프로젝트는 2013년부터 2022년까지의 30개국 데이터를 사용해, 인구 대비 난민 수가 증가한 국가에서 범죄율도 함께 증가하는지 검토합니다. 분석은 단순 상관관계가 아니라, 국가별 고정 특성과 연도별 공통 충격을 통제하는 Two-Way Fixed Effects 구조로 수행했습니다.
 
 ---
 
-## What you get (outputs)
+## 1. Overview
 
-Running the scripts regenerates:
+난민 유입과 범죄율의 관계는 사회적으로 매우 민감한 주제입니다. 단순히 “난민이 늘어난 국가에서 범죄도 늘었다”는 식의 상관관계만으로 결론을 내리면, 국가별 제도 차이, 경기 변화, 치안 통계 기준, 인구 규모, 장기 추세를 모두 혼동할 수 있습니다.
 
-- **Main TWFE table (5 outcomes):** `outputs/tables/main_twfe_refugees_only.csv`  
-- **Dynamic checks (separate blocks):** `outputs/tables/dynamic_curr.csv`, `dynamic_lag1.csv`, `dynamic_lag2.csv`, `dynamic_lead1_placebo.csv`  
-- **Dynamic checks (joint model):** `outputs/tables/dynamic_joint_t_lags_lead.csv`  
-- **Robustness (country trends):** `outputs/tables/robustness_country_trends.csv`  
-- **Robustness (drop-year sensitivity):** `outputs/tables/robustness_drop_years.csv`  
-- **First difference (Year FE):** `outputs/tables/first_difference_year_fe.csv`  
-- **Coefficient plot:** `outputs/figures/coefplot_main_twfe.png`
+이 프로젝트는 이런 문제를 피하기 위해, 국가-연도 패널 데이터를 구성하고 난민 유입과 여러 범죄 유형의 관계를 검토했습니다.
+
+분석 대상은 2013년부터 2022년까지 30개국이며, 최종 데이터는 300개의 국가-연도 관측치로 구성됩니다. 주요 설명 변수는 인구 10만 명당 난민 수이고, 결과 변수는 인구 10만 명당 범죄율입니다.
+
+주요 결과는 다음과 같습니다.
+
+기본 Two-Way Fixed Effects 분석에서는 전체 범죄율과 재산범죄율에서 양의 상관관계가 나타났습니다. 하지만 폭력범죄, 마약범죄, 성범죄에서는 일관된 양의 관계를 확인하기 어려웠습니다.
+
+또한 국가별 장기 추세를 추가하면 재산범죄의 양의 관계도 크게 약해졌습니다. 따라서 이 프로젝트의 결론은 “난민 유입이 범죄를 증가시킨다”가 아니라, **기본 사양에서 일부 양의 상관관계가 관찰되지만, 강건한 인과효과로 해석하기 어렵다**는 쪽에 가깝습니다.
 
 ---
 
-## Quickstart (single command)
+## 2. Problem & Objective
+
+이 프로젝트의 출발점은 다음 질문입니다.
+
+> 난민 유입 규모가 커진 국가에서 범죄율도 함께 증가하는가?
+
+이 질문은 단순해 보이지만, 실제로는 매우 조심스럽게 다루어야 합니다. 난민 유입은 무작위로 발생하지 않습니다. 특정 국가의 경제 상황, 정치적 조건, 국경 위치, 기존 이민자 네트워크, 제도적 수용 능력, 사회복지 수준에 따라 난민 유입 규모가 달라질 수 있습니다.
+
+범죄율 역시 국가마다 측정 방식과 신고 기준이 다를 수 있습니다. 어떤 국가는 범죄 신고율이 높고, 어떤 국가는 경찰 통계 집계 방식이 다를 수 있습니다. 또한 특정 연도에는 경기 침체, 코로나19, 제도 변화처럼 여러 국가에 동시에 영향을 주는 사건이 발생할 수 있습니다.
+
+따라서 단순한 국가 간 비교는 충분하지 않습니다.
+
+이 프로젝트의 목표는 다음과 같습니다.
+
+첫째, 난민 유입과 범죄율을 국가-연도 패널 구조로 정리합니다.
+
+둘째, 국가별 고정 특성과 연도별 공통 충격을 통제한 뒤에도 난민 유입과 범죄율 사이의 관계가 남는지 확인합니다.
+
+셋째, 범죄를 하나로 묶지 않고 폭력범죄, 재산범죄, 마약범죄, 성범죄로 나누어 결과가 특정 범죄 유형에만 나타나는지 확인합니다.
+
+넷째, lag, lead placebo, 국가별 추세, 특정 연도 제외, first difference를 통해 기본 결과가 얼마나 안정적인지 검토합니다.
+
+이 프로젝트는 특정 정치적 주장을 뒷받침하기 위한 분석이 아니라, **민감한 사회적 주장을 데이터로 검토할 때 어떤 검증이 필요한지 보여주는 프로젝트**입니다.
+
+---
+
+## 3. Data
+
+분석에는 2013년부터 2022년까지의 국가-연도 패널 데이터를 사용했습니다.
+
+분석 단위는 하나의 국가가 특정 연도에 가진 난민 유입 규모와 범죄율입니다.
+
+- 분석 기간: 2013–2022년
+- 분석 단위: 국가 × 연도
+- 국가 수: 30개국
+- 최종 관측치 수: 300개
+- 주요 설명 변수: 인구 10만 명당 난민 수
+- 주요 결과 변수: 인구 10만 명당 범죄율
+
+원자료에는 다음 정보가 포함되어 있습니다.
+
+- 국가명과 연도
+- 이민자 수
+- 난민 수
+- 인구
+- GDP 관련 지표
+- 사회보호 지출 관련 지표
+- 실업률
+- 고등교육 참여 규모
+- 폭력범죄 수
+- 재산범죄 수
+- 마약범죄 수
+- 성범죄 수
+- 경찰 인력 수
+
+분석에서는 국가 규모의 차이를 줄이기 위해 난민 수와 범죄 수를 인구 10만 명당 비율로 변환했습니다. 국가마다 인구 규모가 크게 다르기 때문에, 원자료의 절대 인원 수를 그대로 비교하면 큰 국가일수록 난민 수와 범죄 수가 모두 크게 나타나는 문제가 생깁니다.
+
+또한 범죄율과 난민 유입 변수는 로그 변환해 사용했습니다. 이는 국가 간 규모 차이를 줄이고, 계수를 대략적인 비율 변화로 해석하기 쉽게 만들기 위한 선택입니다.
+
+결과 변수는 다음 다섯 가지로 구성했습니다.
+
+- 전체 범죄율
+- 폭력범죄율
+- 재산범죄율
+- 마약범죄율
+- 성범죄율
+
+통제 변수로는 GDP 관련 지표, 사회보호 지출, 실업률, 고등교육 참여율, 경찰 인력 비율을 사용했습니다. 이 변수들은 국가의 경제·사회적 조건과 치안 역량이 범죄율에 영향을 줄 수 있다는 점을 고려하기 위한 것입니다.
+
+---
+
+## 4. Method / System Design
+
+핵심 분석 방법은 Two-Way Fixed Effects입니다.
+
+이 프로젝트에서는 국가 Fixed Effects와 연도 Fixed Effects를 함께 사용했습니다.
+
+국가 Fixed Effects는 각 국가가 원래 가지고 있는 고정적인 차이를 통제합니다. 예를 들어 범죄 통계 집계 방식, 법제도, 지리적 위치, 장기적인 사회 구조처럼 분석 기간 동안 크게 변하지 않는 차이가 여기에 해당합니다.
+
+연도 Fixed Effects는 특정 연도에 여러 국가에 공통으로 영향을 줄 수 있는 충격을 통제합니다. 예를 들어 코로나19 시기, 유럽 전반의 경기 변화, 국제 정세 변화, 범죄 신고 환경 변화 등이 여기에 포함될 수 있습니다.
+
+기본 모형은 다음 관계를 검토합니다.
+
+> 같은 국가 안에서, 특정 연도에 인구 대비 난민 수가 높아졌을 때 범죄율도 함께 높아지는가?
+
+추가적으로 다음 검증을 수행했습니다.
+
+첫째, 현재 난민 수뿐 아니라 1년 lag, 2년 lag를 사용했습니다. 난민 유입의 영향이 즉시 나타나지 않고 시차를 두고 나타날 가능성을 확인하기 위해서입니다.
+
+둘째, 1년 lead를 placebo로 사용했습니다. 미래의 난민 수가 현재 범죄율을 설명한다면, 이는 난민 유입이 범죄를 증가시켰다는 해석보다 공통 추세나 역인과 가능성을 의심해야 한다는 신호입니다.
+
+셋째, 국가별 선형 추세를 추가했습니다. 국가마다 범죄율이 장기적으로 상승하거나 하락하는 경향이 다를 수 있기 때문입니다.
+
+넷째, 특정 연도를 제외하는 robustness 검증을 수행했습니다. 특정 사건이나 특정 기간이 결과를 주도하는지 확인하기 위한 목적입니다.
+
+다섯째, first difference 분석을 수행했습니다. 국가별 수준 차이를 제거하고, 전년 대비 변화량 사이의 관계를 확인하기 위해서입니다.
+
+---
+
+## 5. Implementation
+
+이 프로젝트는 재현 가능한 분석을 위해 데이터 전처리, 기본 분석, 동태적 검증, robustness 검증, 시각화를 각각 별도 스크립트로 분리했습니다.
+
+전체 흐름은 다음과 같습니다.
+
+1. 원자료를 불러와 인구 10만 명당 비율과 로그 변수를 생성합니다.
+2. 기본 Two-Way Fixed Effects 분석을 실행합니다.
+3. lag, lead placebo, joint dynamic model을 실행합니다.
+4. 국가별 추세를 추가한 robustness 검증을 수행합니다.
+5. 특정 연도 제외 검증과 first difference 분석을 실행합니다.
+6. 주요 계수를 시각화합니다.
+
+주요 실행 파일은 다음과 같습니다.
+
+- `00_prepare_panel.py`  
+  원자료를 불러와 인구 10만 명당 비율, 전체 범죄율, 로그 변수를 생성합니다.
+
+- `01_main_twfe_refugees_only.py`  
+  기본 Two-Way Fixed Effects 분석을 실행합니다.
+
+- `02_dynamic_lags_leads_placebo.py`  
+  현재값, 1년 lag, 2년 lag, 1년 lead placebo, joint dynamic model을 실행합니다.
+
+- `03_robustness_country_trends.py`  
+  국가별 선형 추세를 추가한 robustness 검증을 실행합니다.
+
+- `04_robustness_drop_years.py`  
+  특정 연도를 제외했을 때 결과가 유지되는지 확인합니다.
+
+- `05_first_difference.py`  
+  전년 대비 변화량을 사용한 first difference 분석을 실행합니다.
+
+- `06_make_coefplot.py`  
+  주요 결과를 계수 그래프로 시각화합니다.
+
+- `run_all.py`  
+  전체 분석 파이프라인을 한 번에 실행하고 결과표를 출력합니다.
+
+공통으로 사용하는 변수 생성 함수와 회귀 실행 함수는 `src/ref_crime/` 아래에 분리했습니다. 이 구조는 분석 결과를 한 번 만든 뒤 끝내는 것이 아니라, 같은 명령어로 결과를 다시 생성할 수 있도록 하기 위한 것입니다.
+
+---
+
+## 6. Evaluation
+
+기본 Two-Way Fixed Effects 결과는 결과 변수에 따라 다르게 나타났습니다.
+
+전체 범죄율에서는 난민 유입 변수의 계수가 약 0.057로 추정되었고, 통계적으로 유의했습니다. 재산범죄율에서도 약 0.058의 양의 계수가 나타났고, 통계적으로 유의했습니다.
+
+반면 폭력범죄율, 마약범죄율, 성범죄율에서는 유의한 양의 관계를 확인하기 어려웠습니다.
+
+기본 결과는 다음처럼 요약할 수 있습니다.
+
+| 결과 변수 | 기본 TWFE 결과 | 해석 |
+|---|---:|---|
+| 폭력범죄율 | 약 +0.226 | 통계적으로 명확하지 않음 |
+| 재산범죄율 | 약 +0.058 | 양의 상관관계 관찰 |
+| 마약범죄율 | 약 +0.014 | 통계적으로 명확하지 않음 |
+| 성범죄율 | 약 +0.067 | 통계적으로 명확하지 않음 |
+
+하지만 이 결과만으로 결론을 내리지는 않았습니다.
+
+동태적 검증에서는 재산범죄율에서 현재값과 lag 값뿐 아니라 lead placebo에서도 양의 관계가 나타났습니다. 이는 중요한 경고 신호입니다. 미래의 난민 수가 현재 범죄율과도 관련되어 보인다면, 기본 결과가 인과효과라기보다 국가별 추세나 공통 요인을 반영할 수 있기 때문입니다.
+
+국가별 선형 추세를 추가하면 기본 사양에서 유의했던 재산범죄율의 양의 관계는 약해졌습니다. 재산범죄율의 계수는 약 0.010으로 줄어들었고 통계적으로 유의하지 않았습니다.
+
+폭력범죄와 마약범죄에서는 여러 사양에서 일관된 양의 관계를 확인하기 어려웠습니다. 성범죄의 경우 일부 robustness 사양에서 음의 계수가 나타났지만, 이 역시 강한 결론으로 해석하기보다는 사양 민감성을 보여주는 결과로 보는 것이 적절합니다.
+
+따라서 전체 평가는 다음과 같습니다.
+
+> 기본 TWFE에서는 전체 범죄율과 재산범죄율에서 양의 상관관계가 관찰되지만, lead placebo와 국가별 추세를 고려하면 이를 난민 유입의 강건한 인과효과로 해석하기 어렵다.  
+> 폭력범죄, 마약범죄, 성범죄에서는 일관된 양의 관계를 확인하기 어렵다.
+
+---
+
+## 7. Key Design Decisions
+
+### 왜 인구 10만 명당 비율을 사용했는가?
+
+국가마다 인구 규모가 크게 다르기 때문에 난민 수나 범죄 수를 원자료 그대로 비교하면 큰 국가일수록 값이 커집니다.
+
+이 프로젝트는 국가 간 규모 차이를 줄이기 위해 난민 수와 범죄 수를 인구 10만 명당 비율로 변환했습니다.
+
+### 왜 로그 변환을 사용했는가?
+
+난민 유입 규모와 범죄율은 국가별로 분포 차이가 큽니다. 일부 국가는 값이 매우 크고, 일부 국가는 매우 작습니다.
+
+로그 변환을 사용하면 극단값의 영향을 줄이고, 결과를 대략적인 비율 변화로 해석하기 쉬워집니다.
+
+### 왜 Two-Way Fixed Effects를 사용했는가?
+
+단순 regression은 국가별 제도 차이와 연도별 공통 충격을 충분히 통제하지 못합니다.
+
+이 프로젝트는 국가 Fixed Effects와 연도 Fixed Effects를 함께 사용해, 국가별 고정 특성과 특정 연도의 공통 충격을 통제했습니다.
+
+### 왜 lead placebo를 넣었는가?
+
+난민 유입이 범죄율을 증가시킨다는 해석이 맞다면, 미래의 난민 수가 현재 범죄율을 설명해서는 안 됩니다.
+
+lead placebo에서 관계가 나타난다면, 결과가 인과효과라기보다 사전 추세, 공통 충격, 역인과 가능성을 반영할 수 있습니다.
+
+이 프로젝트에서는 재산범죄에서 lead placebo가 중요한 경고 신호로 나타났기 때문에, 기본 TWFE 결과를 강한 인과효과로 해석하지 않았습니다.
+
+### 왜 국가별 추세를 추가했는가?
+
+국가마다 범죄율이 장기적으로 상승하거나 하락하는 방향이 다를 수 있습니다. 이러한 국가별 추세를 통제하지 않으면, 난민 유입과 범죄율이 같은 방향으로 움직이는 것처럼 보일 수 있습니다.
+
+국가별 선형 추세를 추가한 결과, 기본 사양에서 유의했던 재산범죄의 양의 관계가 크게 약해졌습니다. 이 점은 결과 해석에서 매우 중요합니다.
+
+---
+
+## 8. Development Notes
+
+이 프로젝트는 처음에는 난민 유입과 범죄율 사이의 기본 상관관계를 확인하는 것에서 출발했습니다.
+
+기본 TWFE 결과만 보면 전체 범죄율과 재산범죄율에서 양의 관계가 나타났습니다. 하지만 민감한 사회적 주제에서 기본 회귀 결과 하나만으로 결론을 내리는 것은 위험하다고 판단했습니다.
+
+그래서 분석은 점점 “효과가 있는가?”를 묻는 방향에서 “이 관계가 얼마나 안정적인가?”를 확인하는 방향으로 바뀌었습니다.
+
+첫 번째 전환점은 lead placebo였습니다. 재산범죄에서 미래의 난민 유입 변수도 현재 범죄율과 관련되어 보였기 때문에, 기본 결과를 인과효과로 해석하기 어렵다는 신호가 나타났습니다.
+
+두 번째 전환점은 국가별 추세였습니다. 국가별 장기 추세를 추가하자 재산범죄의 양의 관계가 약해졌습니다. 이는 기본 결과가 국가별 장기 흐름의 영향을 받았을 가능성을 보여줍니다.
+
+세 번째 전환점은 결과 해석 방식이었습니다. 초기에는 “어떤 범죄 유형에서 양의 관계가 있는가?”를 중심으로 볼 수 있었지만, 최종적으로는 “강건한 양의 관계가 있는가?”를 중심으로 결론을 수정했습니다.
+
+이 과정을 통해 README와 분석 결과의 핵심 메시지는 다음으로 정리되었습니다.
+
+> 기본 사양에서는 일부 양의 상관관계가 보이지만, 여러 검증을 거치면 난민 유입이 범죄를 증가시킨다는 강한 결론은 지지하기 어렵다.
+
+---
+
+## 9. Limitations
+
+이 프로젝트는 국가-연도 패널 데이터를 사용한 관측 연구입니다. 따라서 결과를 강한 인과효과로 해석하는 데는 한계가 있습니다.
+
+첫째, 난민 유입은 무작위로 발생하지 않습니다. 특정 국가의 제도, 경제 상황, 국경 조건, 기존 이민자 네트워크에 따라 난민 유입 규모가 달라질 수 있습니다.
+
+둘째, 국가별 범죄 통계는 집계 방식과 신고율이 다를 수 있습니다. 같은 범죄 유형이라도 국가마다 법적 정의나 신고 관행이 다를 수 있습니다.
+
+셋째, 분석 단위가 국가-연도이기 때문에 지역 단위의 세부 변화를 확인할 수 없습니다. 난민이 특정 도시나 지역에 집중되었는지, 범죄율 변화가 같은 지역에서 발생했는지는 알 수 없습니다.
+
+넷째, 표본은 30개국과 10년으로 구성되어 있어, 더 긴 기간이나 더 넓은 국가 표본을 사용한 검증이 필요합니다.
+
+다섯째, 이 분석은 난민 정책의 모든 효과를 평가하지 않습니다. 범죄율과의 관계만 제한적으로 검토합니다.
+
+여섯째, 기본 TWFE 구조는 관측 가능한 통제 변수와 고정효과를 포함하지만, 시간에 따라 변하는 모든 국가별 요인을 완전히 통제하지는 못합니다.
+
+따라서 이 프로젝트의 결론은 다음처럼 제한적으로 해석해야 합니다.
+
+> 이 데이터와 사양에서는 난민 유입이 폭력범죄, 마약범죄, 성범죄를 일관되게 증가시킨다는 증거를 확인하기 어렵다.  
+> 재산범죄에서는 기본 사양에서 양의 관계가 나타나지만, lead placebo와 국가별 추세 검증을 고려하면 강한 인과효과로 해석하기 어렵다.
+
+---
+
+## 10. How to Run
+
+### Install dependencies
 
 ```bash
 pip install -r requirements.txt
+```
+
+### Run the full pipeline
+
+```bash
 PYTHONPATH=$PWD:$PYTHONPATH python scripts/run_all.py
 ```
 
-This will:
+### Run each step separately
 
-- **Regenerate all CSV tables under outputs/tables/
+```bash
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/00_prepare_panel.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/01_main_twfe_refugees_only.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/02_dynamic_lags_leads_placebo.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/03_robustness_country_trends.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/04_robustness_drop_years.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/05_first_difference.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/06_make_coefplot.py
+```
 
-- **Regenerate the coefficient plot under outputs/figures/
+결과는 `outputs/` 폴더에 저장됩니다.
 
-- **Print every table to the console for inspection
-
-All outputs are saved under outputs/.
-
-Repository layout
-See scripts/ for the runnable pipeline and src/ref_crime/ for shared helpers.
+주요 결과표는 `outputs/tables/`에 저장되고, 계수 그래프는 `outputs/figures/`에 저장됩니다.
 
 ---
 
-## Citation
-If you use this repository or its outputs, please cite:
+## 11. Project Structure
 
-Park, Dongha. Refugee Inflows → Crime Rates: Country-Year Panel Analysis (TWFE + Robustness Suite). (Year). Repository: https://github.com/Ha-minss/Portfolio/tree/main/Refugees_Crime_Panel
+```text
+refugees-crime-panel/
+├── README.md
+├── requirements.txt
+├── data/
+│   ├── raw/
+│   │   └── panel_raw.csv
+│   └── processed/
+│       └── panel_processed.csv
+├── scripts/
+│   ├── 00_prepare_panel.py
+│   ├── 01_main_twfe_refugees_only.py
+│   ├── 02_dynamic_lags_leads_placebo.py
+│   ├── 03_robustness_country_trends.py
+│   ├── 04_robustness_drop_years.py
+│   ├── 05_first_difference.py
+│   ├── 06_make_coefplot.py
+│   └── run_all.py
+├── src/
+│   └── ref_crime/
+│       ├── features.py
+│       └── regressions.py
+└── outputs/
+    ├── tables/
+    └── figures/
+```
 
-### BibTeX (optional)
-```
-@misc{park_refugees_crime_panel,
-  author       = {Park, Dongha},
-  title        = {Refugee Inflows → Crime Rates: Country-Year Panel Analysis (TWFE + Robustness Suite)},
-  year         = {2026},
-  howpublished = {\url{https://github.com/Ha-minss/Portfolio/tree/main/Refugees_Crime_Panel}},
-  note         = {Accessed 2026-02-04}
-}
-```
+`data/raw/`에는 원자료 패널이 들어 있습니다.
+
+`data/processed/`에는 분석용으로 변환된 패널 데이터가 저장됩니다.
+
+`scripts/`에는 전체 분석을 재현하는 실행 스크립트가 들어 있습니다.
+
+`src/ref_crime/`에는 변수 생성과 회귀 실행에 사용하는 공통 함수가 들어 있습니다.
+
+`outputs/`에는 결과표와 그래프가 저장됩니다.
+
 ---
 
-## Contact
-If you find a bug or want to reproduce a specific table/figure, open an issue (or message me) with:
+## 12. What This Project Demonstrates
 
-* script name
-* exact command you ran
-* full error log
+이 프로젝트는 민감한 사회적 주장을 데이터로 검토할 때 필요한 분석 태도를 보여줍니다.
+
+첫째, 단순한 국가 간 비교가 아니라 국가-연도 패널 구조로 문제를 재정의했습니다.
+
+둘째, 난민 수와 범죄 수를 인구 10만 명당 비율로 바꿔 국가 규모 차이를 줄였습니다.
+
+셋째, 국가 Fixed Effects와 연도 Fixed Effects를 사용해 국가별 고정 특성과 연도별 공통 충격을 통제했습니다.
+
+넷째, 폭력범죄, 재산범죄, 마약범죄, 성범죄를 분리해 결과가 특정 범죄 유형에만 나타나는지 확인했습니다.
+
+다섯째, lag, lead placebo, 국가별 추세, 특정 연도 제외, first difference를 통해 기본 결과가 얼마나 안정적인지 검토했습니다.
+
+여섯째, 결과를 과장하지 않고 제한적으로 해석했습니다. 기본 사양에서 일부 양의 관계가 나타났더라도, 검증 과정에서 약해지는 결과는 강한 인과효과로 주장하지 않았습니다.
+
+이 프로젝트의 핵심은 단순히 회귀분석을 실행한 것이 아니라, **민감한 사회 데이터에서 결과를 어떻게 검증하고 조심스럽게 해석해야 하는지 보여준 것**입니다.
