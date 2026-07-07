@@ -1,141 +1,392 @@
-# Korea SECA → Kyushu SO₂ (Step 1, 2020-09)
+# Korea SECA → Northern Kyushu SO₂
 
-Maritime shipping is a major source of SO₂ emissions, and sulfur fuel regulations can reduce sulfur pollution locally and potentially downwind. Korea implemented **SECA Step 1 in Sep 2020**, and this project examines whether SO₂ concentrations in **Kyushu, Japan** shifted downward after the policy. Using a coastal–inland comparison, we ask whether the **coastal–inland SO₂ gap** in Kyushu becomes more negative after 2020-09. The results show a **~10% downward shift (directionally consistent across main specifications)**.
+한국의 황 배출규제해역(SECA) 도입이 일본 규슈 북부의 SO₂ 농도에 미친 영향을 분석한 환경정책 인과추론 프로젝트입니다.
 
-This repository provides a **reproducible evaluation** using (i) a **coastal–inland DID** with **station and month fixed effects** and **station-clustered** standard errors, and (ii) an **event study** centered at **2020-09** to assess dynamics and pre-trends.
-- **Study window:** 2017-01 to 2021-12  
-- **Unit:** station × month (Kyushu)  
-- **Inference:** 1-way cluster by station (main results)  
-- **Scope:** Korea SECA Step 1 only (run-and-reproduce bundle)
+이 프로젝트는 2020년 9월 시행된 **한국 SECA Step 1** 이후, 일본 규슈 북부의 해안 관측소에서 SO₂ 농도가 내륙 관측소에 비해 상대적으로 낮아졌는지 검증합니다. 분석에는 후쿠오카·사가·나가사키의 대기오염 상시감시 자료를 사용했고, DID, Event Study, Fixed Effects, placebo test, NO₂ 검증, IMO 2020 동시 통제, PPML 검증 등을 함께 수행했습니다.
 
 ---
 
-## What you get (outputs)
+## 1. Overview
 
-This repo regenerates:
+이 프로젝트의 핵심 질문은 다음과 같습니다.
 
-- **Main DID table (3 specs):** `outputs/tables/main_did_step1.csv`
-- **Event-study coefficients:** `outputs/tables/event_study_step1.csv`
-- **Event-study plot:** `outputs/figures/event_study_step1.png`
-- **Robustness suite:** `outputs/tables/robustness_suite_step1.csv`
-- **Treatment-definition robustness:** `outputs/tables/treatment_defs_step1.csv`
-- **Level SO₂ checks (OLS/PPML):** `outputs/tables/level_so2_ols_ppml_step1.csv`
+> 한국 SECA 도입 이후, 일본 규슈 북부의 해안 관측소 SO₂ 농도는 내륙 관측소에 비해 상대적으로 낮아졌는가?
 
-> Quick visual check: open `outputs/figures/event_study_step1.png`.
+한국은 2020년 9월부터 주요 항만 주변에서 정박·계류 중인 선박을 대상으로 저유황 연료 규제를 적용했습니다. 이 규제는 선박 연료의 황 함량을 낮춰 SO₂ 배출을 줄이는 것을 목표로 합니다.
 
----
+본 프로젝트는 이 정책이 한국 내부의 대기질뿐 아니라, 바람과 장거리 대기 이동을 통해 일본 규슈 북부의 대기질에도 영향을 줄 수 있는지 관측 데이터를 통해 검토했습니다.
 
-## Design
+주요 DID 결과에서는 SECA 도입 이후 해안 관측소의 SO₂가 내륙 관측소에 비해 약 **9~10% 낮아지는 방향**이 나타났습니다. Event Study에서는 정책 이전에 해안과 내륙이 뚜렷하게 다른 사전 추세를 보였다는 통계적 증거가 강하게 확인되지는 않았고, placebo test와 NO₂ 검증도 주요 결과와 크게 충돌하지 않았습니다.
 
-**Research question.** After Korea’s SECA Step 1 (2020-09), does the **coastal–inland SO₂ gap in Kyushu** shift **downward**?
-
-**Empirical strategy.**
-- TWFE DID: station FE + month FE, station-clustered SE
-- Event study centered at **2020-09**, window **[-12, +12]**, reference **k = -1**
-- Robustness: weather variants, econ lags, time placebos, alternative coastal definitions
-- Level-outcome checks: OLS + PPML on level SO₂ (ppb)
+다만 이 프로젝트는 정책 효과를 완전히 확정하는 분석이 아닙니다. 실제 선박별 운항 자료나 배출량 추정치를 직접 결합한 것이 아니며, IMO 2020 규제와 한국 SECA의 시행 시점이 같은 해에 존재한다는 한계도 있습니다. 따라서 결론은 **“한국 SECA 이후 규슈 북부 해안 지역에서 SO₂가 내륙 대비 상대적으로 낮아지는 패턴이 관찰되었다”**로 제한해서 해석합니다.
 
 ---
 
-## Repository layout
+## 2. Problem & Objective
 
-```text
-data/
-  df_iv.csv                      # trimmed station×month panel (included)
-scripts/
-  01_main_did_step1.py
-  02_event_study_step1.py
-  03_robustness_suite_step1.py
-  04_level_so2_ols_ppml.py
-  05_treatment_defs_step1.py
-  00_prepare_df_iv_for_github.py # optional: re-make trimmed dataset
-outputs/
-  tables/
-  figures/
-step1_did/                       # reusable helpers + config
-requirements.txt
-````
+SO₂는 선박 연료의 황 성분과 직접적으로 연결되는 오염물질입니다. 선박이 황 함량이 높은 연료를 사용할수록 SO₂ 배출이 증가할 수 있고, 이는 항만과 해안 지역의 대기질에 영향을 줄 수 있습니다.
+
+한국 SECA는 주요 항만 주변에서 선박 연료의 황 함량을 낮추는 규제입니다. 특히 이 프로젝트가 다루는 Step 1은 2020년 9월부터 정박·계류 중인 선박을 대상으로 적용되었습니다.
+
+문제는 정책 전후의 SO₂ 평균만 비교해서는 SECA의 영향을 판단하기 어렵다는 점입니다. SO₂ 농도는 다음 요인들의 영향을 함께 받습니다.
+
+- 계절성
+- 기상 조건
+- 산업활동과 에너지 사용
+- 다른 해운 규제
+- 코로나19 시기의 활동 변화
+- 관측소별 고정적인 지역 특성
+
+따라서 단순히 “2020년 9월 이후 SO₂가 줄었는가?”를 보는 것은 충분하지 않습니다. 이 프로젝트는 질문을 다음과 같이 바꿨습니다.
+
+> 정책 이후 해안 관측소의 SO₂가 내륙 관측소에 비해 상대적으로 더 낮아졌는가?
+
+이 비교 구조를 사용한 이유는 해상 배출의 영향이 상대적으로 해안에서 먼저 또는 강하게 관찰될 가능성이 있기 때문입니다. 내륙 관측소는 규슈 전체의 공통적인 시간 변화와 계절성을 비교하기 위한 기준 역할을 합니다.
+
+이 프로젝트의 목표는 세 가지입니다.
+
+1. 규슈 북부 관측소-월 패널 데이터를 구성해 SECA 도입 전후의 SO₂ 변화를 분석합니다.
+2. DID와 Event Study를 통해 해안과 내륙의 상대적 변화가 정책 이후 어떻게 달라졌는지 추정합니다.
+3. placebo test, NO₂ 검증, IMO 2020 동시 통제, Robustness 검증을 통해 결과가 특정 사양이나 우연한 시점 선택에만 의존하지 않는지 확인합니다.
 
 ---
 
-## Quickstart
+## 3. Data
 
-### 1) Install
+분석에는 일본 규슈 북부의 대기오염 상시감시 자료를 중심으로 구성한 관측소-월 패널 데이터를 사용했습니다.
+
+분석 대상 지역은 **후쿠오카, 사가, 나가사키**입니다. 분석 기간은 **2017년 1월부터 2021년 12월까지**이며, 정책 도입 시점은 **2020년 9월**입니다.
+
+분석 단위는 **관측소 × 월**입니다. 특정 관측소의 특정 월 SO₂ 농도를 하나의 관측치로 보고, 같은 관측소를 여러 달에 걸쳐 반복 관찰하는 패널 구조입니다.
+
+핵심 분석 기준은 다음과 같습니다.
+
+- 분석 지역: 후쿠오카·사가·나가사키
+- 분석 기간: 2017년 1월 ~ 2021년 12월
+- 분석 단위: 관측소-월 패널
+- 관측소 수: 70개
+- 월 수: 60개월
+- 핵심 분석 관측치 수: 3,829개
+- 정책 시점: 2020년 9월 한국 SECA Step 1
+- 주요 결과 변수: 월평균 SO₂ 농도
+- 주요 비교 구조: 해안 관측소 vs 내륙 관측소
+
+저장소의 `data/df_iv.csv`는 GitHub에서 재현 가능한 실행을 위해 필요한 컬럼을 정리한 공유용 패널 데이터입니다. 이 파일에는 핵심 분석 기간보다 넓은 범위의 관측치와 보조 변수가 포함될 수 있으며, 분석 스크립트는 Step 1 분석 기간과 유효 관측 조건을 기준으로 필요한 표본을 다시 구성합니다.
+
+데이터는 크게 다섯 가지 역할로 나뉩니다.
+
+첫째, **대기오염 자료**입니다. SO₂와 NO₂ 관측값을 포함합니다. SO₂는 한국 SECA의 직접적인 규제 메커니즘과 연결되는 핵심 결과 변수입니다. NO₂는 SECA가 직접 겨냥하는 오염물질이 아니므로, validation check에서 보조 결과 변수로 사용했습니다.
+
+둘째, **관측소 위치 정보**입니다. 해안 관측소와 내륙 관측소를 구분하기 위해 사용했습니다. 단순 행정구역이 아니라 해안선까지의 거리, 부산항까지의 거리, 해안 개방성 등을 활용했습니다.
+
+셋째, **기상 자료**입니다. SO₂ 농도는 대기 확산 조건에 영향을 받기 때문에, 기온과 이슬점의 차이, 기압, 혼합층 고도 등을 통제 변수로 사용했습니다.
+
+넷째, **경제활동 및 에너지 관련 자료**입니다. 디젤 가격, 광공업 생산지수, 화력발전 관련 지표를 사용했습니다. 이 변수들은 SO₂와 같은 달에 동시에 움직일 수 있기 때문에, 주요 분석에서는 1개월 lag를 적용했습니다.
+
+다섯째, **HYSPLIT 기반 back trajectory 보조 분석**입니다. 이 분석은 규슈 관측소에 도달한 공기가 과거 72시간 동안 어떤 경로를 거쳤는지 확인하기 위한 것입니다. DID의 핵심 식별 변수는 아니지만, 한국 SECA 인근을 지나는 대기 이동 경로가 실제로 존재할 수 있음을 보여주는 보조적 근거로 사용했습니다.
+
+주요 결과 변수는 월평균 SO₂ 농도입니다. 일부 관측값에 0이 포함될 수 있으므로, 기본 분석에서는 `log(1 + SO₂)`를 사용했습니다. 다만 로그 변환에만 의존하지 않기 위해, SO₂ 원자료 수준을 사용한 OLS와 PPML 검증도 추가했습니다.
+
+---
+
+## 4. Method / System Design
+
+핵심 방법론은 **DID**입니다.
+
+정책 전후 평균 비교는 SECA 효과와 다른 시간 변화를 구분하기 어렵습니다. 그래서 이 프로젝트는 해안 관측소를 처치군, 내륙 관측소를 비교군으로 두고, 정책 전후의 상대적 변화를 비교했습니다.
+
+기본 모형은 다음 구조를 갖습니다.
+
+- 해안 관측소 여부
+- 정책 이후 여부
+- 해안 관측소와 정책 이후의 결합 효과
+- 관측소 Fixed Effects
+- 연월 Fixed Effects
+- 기상 및 경제활동 통제 변수
+- 관측소 단위 clustered standard errors
+
+관측소 Fixed Effects는 각 관측소가 원래 가지고 있는 고정적인 차이를 통제합니다. 예를 들어 위치, 주변 환경, 장기적인 지역 배출 구조 같은 요소는 관측소마다 다를 수 있습니다.
+
+연월 Fixed Effects는 특정 월에 모든 관측소에 공통으로 영향을 줄 수 있는 충격을 통제합니다. 계절성, 광역적 경기 변화, 전국적 규제 변화, 특정 월의 공통 기상 패턴 등이 여기에 포함됩니다.
+
+관심 있는 값은 정책 이후 해안 관측소에서 SO₂가 내륙 관측소에 비해 추가적으로 얼마나 달라졌는지입니다. 이 값이 음의 방향이면, SECA 이후 해안 지역의 SO₂가 내륙에 비해 상대적으로 낮아졌다는 의미입니다.
+
+DID의 핵심 가정은 정책 이전에 해안과 내륙의 추세가 크게 다르지 않았다는 것입니다. 이를 확인하기 위해 **Event Study**를 수행했습니다. 정책 도입 시점인 2020년 9월을 기준으로 전후 12개월의 동태적 변화를 확인했고, 정책 도입 직전 1개월을 기준 시점으로 두었습니다.
+
+추가 검증은 다음 방향으로 설계했습니다.
+
+- 정책 시행 전 가짜 정책 시점을 넣어도 효과가 나타나는지 확인
+- SO₂가 아닌 NO₂에서도 같은 효과가 나타나는지 확인
+- IMO 2020과 한국 SECA 효과가 시기적으로 섞이는 문제 확인
+- 기상 및 경제활동 통제 변수 구성을 바꿔도 결과가 유지되는지 확인
+- 해안 관측소 정의를 바꿔도 결과 방향이 유지되는지 확인
+- 로그 변환이 아닌 SO₂ 원자료 수준에서도 결과 방향이 유지되는지 확인
+- 일부 관측소와 기간의 0값 집중 문제가 결과를 좌우하는지 확인
+
+이 설계의 핵심은 하나의 회귀 결과를 제시하는 것이 아니라, 정책 효과로 보이는 패턴이 여러 대체 설명과 검증을 통과하는지 확인하는 것입니다.
+
+---
+
+## 5. Implementation
+
+이 프로젝트는 논문형 분석을 GitHub에서 재현 가능한 형태로 정리하기 위해, 분석 흐름을 실행 스크립트와 공통 모듈로 분리했습니다.
+
+구현 흐름은 다음과 같습니다.
+
+1. 공유용 패널 데이터를 불러옵니다.
+2. 분석 기간을 2017년 1월부터 2021년 12월까지로 제한합니다.
+3. SO₂ 유효 관측률과 필요한 통제 변수를 기준으로 분석 표본을 구성합니다.
+4. SO₂를 로그 변환하고, 정책 이후 여부와 해안 관측소 여부를 결합해 DID 분석 변수를 만듭니다.
+5. 기본 DID 분석을 실행합니다.
+6. Event Study를 실행해 정책 전후의 동태적 변화를 확인합니다.
+7. validation check와 Robustness 검증을 실행합니다.
+8. 결과표와 그래프를 `outputs/`에 저장합니다.
+
+주요 실행 스크립트는 다음과 같습니다.
+
+- `scripts/01_main_did_step1.py`  
+  기본 DID 분석을 실행합니다. Fixed Effects만 포함한 사양, 기상 통제를 추가한 사양, 기상 통제와 경제활동 lag를 함께 포함한 사양을 비교합니다.
+
+- `scripts/02_event_study_step1.py`  
+  2020년 9월을 기준으로 Event Study를 실행하고, 정책 전후의 계수와 그래프를 생성합니다.
+
+- `scripts/03_robustness_suite_step1.py`  
+  placebo test, 통제 변수 변경, 경제활동 lag 변경, 표준오차 관련 검증 등 주요 Robustness 검증을 실행합니다.
+
+- `scripts/04_level_so2_ols_ppml.py`  
+  로그 변환 결과에만 의존하지 않기 위해 SO₂ 원자료 수준에서 OLS와 PPML 검증을 수행합니다.
+
+- `scripts/05_treatment_defs_step1.py`  
+  해안 관측소 정의를 바꿨을 때 결과가 유지되는지 확인합니다.
+
+- `scripts/00_prepare_df_iv_for_github.py`  
+  공유 가능한 분석용 패널 데이터를 다시 만드는 보조 스크립트입니다.
+
+공통 코드인 `step1_did/` 모듈은 데이터 로딩, 전처리, DID 추정, 유틸리티 함수, wild cluster bootstrap 보조 함수를 담고 있습니다. 이 구조를 통해 노트북 하나에 모든 분석을 넣는 방식이 아니라, 각 분석 단계를 독립적으로 실행하고 재현할 수 있도록 했습니다.
+
+---
+
+## 6. Evaluation
+
+평가는 단순히 “계수가 유의한가?”만 보는 방식으로 설계하지 않았습니다. 환경정책 분석에서는 결과의 방향, 사전 추세, placebo, 대체 결과 변수, 다른 정책과의 시기적 중첩, 데이터 품질 문제를 함께 확인해야 합니다.
+
+기본 DID 결과에서는 세 가지 주요 사양 모두에서 해안 지역의 SO₂가 내륙 지역에 비해 상대적으로 낮아지는 방향이 나타났습니다.
+
+- Fixed Effects만 포함한 사양: 약 -0.098 log point
+- 기상 통제를 추가한 사양: 약 -0.100 log point
+- 기상 통제와 경제활동 lag를 포함한 사양: 약 -0.101 log point
+
+로그 결과 변수 기준으로 이는 대략 **9~10% 수준의 상대적 하락**에 해당합니다.
+
+Event Study에서는 정책 도입 전 해안과 내륙의 사전 추세가 통계적으로 크게 다르다는 증거가 확인되지 않았습니다. 전체 사전 기간에 대한 결합 검정의 p-value는 0.711, 도입 직전 근접 기간에 대한 검정의 p-value는 0.734였습니다.
+
+Validation check에서는 다음을 확인했습니다.
+
+첫째, 정책 도입 전의 여러 시점을 가짜 정책 도입 시점으로 설정한 placebo test에서는 통계적으로 유의한 효과가 나타나지 않았습니다.
+
+둘째, SO₂가 아닌 NO₂를 결과 변수로 둔 검증에서는 효과가 0에 가깝고 통계적으로 유의하지 않았습니다. 이는 결과가 단순한 전반적 대기질 변화라기보다 SO₂와 더 직접적으로 연결된 패턴일 가능성을 보조합니다.
+
+셋째, 2020년 1월 시행된 IMO 2020과 2020년 9월 시행된 한국 SECA를 같은 모형 안에서 함께 고려했습니다. 이 검증에서 한국 SECA에 대응하는 계수는 음의 방향을 유지한 반면, IMO 2020에 대응하는 계수는 통계적으로 명확하지 않았습니다.
+
+넷째, 통제 변수 조합, 경제활동 lag, 표준오차 추정 방식, 해안 관측소 정의, 일부 0값 집중 관측치 제외, 원자료 수준의 OLS와 PPML 검증을 수행했습니다. 주요 검증에서 결과의 부호는 대체로 음의 방향을 유지했습니다.
+
+따라서 이 프로젝트의 결과는 다음처럼 요약할 수 있습니다.
+
+> 한국 SECA Step 1 이후 규슈 북부 해안 관측소의 SO₂는 내륙 관측소에 비해 상대적으로 낮아지는 방향을 보였다. 다만 모든 사양에서 강한 통계적 유의성이 유지되는 것은 아니므로, 결과는 제한적으로 해석해야 한다.
+
+---
+
+## 7. Key Design Decisions
+
+### DID를 사용한 이유
+
+정책 전후 평균 비교만으로는 SECA 효과와 계절성, 기상 변화, 경제활동 변화, 다른 해운 규제를 구분하기 어렵습니다. 그래서 해안 관측소와 내륙 관측소의 상대 변화를 비교하는 DID 구조를 사용했습니다.
+
+이 선택은 단순한 평균 차이가 아니라, 정책 이후 해안 지역에서 내륙 지역 대비 추가적인 변화가 있었는지를 보기 위한 것입니다.
+
+### 해안 관측소를 처치군으로 설정한 이유
+
+SECA는 선박 연료 규제이므로, 해상 배출의 영향을 받을 가능성이 더 높은 지역은 해안 관측소입니다. 내륙 관측소는 같은 규슈 북부 안에서 계절성과 공통 충격을 비교하기 위한 기준 역할을 합니다.
+
+다만 해안 여부는 단순히 행정구역으로 정하기 어렵습니다. 이 프로젝트에서는 해안선까지의 거리, 부산항까지의 거리, 해안 개방성을 함께 고려했고, 이후 대체 기준으로 robustness 검증을 수행했습니다.
+
+### 경제활동 변수에 lag를 적용한 이유
+
+경제활동과 SO₂는 같은 달에 동시에 움직일 수 있습니다. 같은 달의 경제활동 변수를 그대로 넣으면 동시성 문제가 생길 수 있습니다.
+
+그래서 디젤 가격, 광공업 지수, 화력발전 관련 지표에는 1개월 lag를 적용했습니다. 이는 같은 달 충격을 직접 통제 변수에 넣는 것보다 보수적인 선택입니다.
+
+### NO₂ 검증을 추가한 이유
+
+한국 SECA는 황 함량 규제이므로 SO₂와 더 직접적으로 연결됩니다. 만약 NO₂에서도 같은 방향의 강한 효과가 나타났다면, 결과가 SECA 때문이라기보다 전반적인 대기질 변화 때문일 가능성이 있습니다.
+
+NO₂ 검증에서 뚜렷한 효과가 나타나지 않은 것은 SO₂ 결과의 해석을 보조하는 validation check로 사용되었습니다.
+
+### IMO 2020을 함께 고려한 이유
+
+2020년 1월 IMO 2020이 시행되었고, 한국 SECA Step 1은 2020년 9월에 시행되었습니다. 두 규제의 시점이 가까우므로, 한국 SECA 결과를 해석할 때 IMO 2020을 고려해야 합니다.
+
+이 프로젝트는 같은 모형 안에서 IMO 2020 이후 해안 지역의 변화와 한국 SECA 이후 해안 지역의 변화를 함께 추정했습니다.
+
+### PPML 검증을 추가한 이유
+
+주요 분석은 `log(1 + SO₂)`를 사용합니다. 하지만 0값이 포함된 자료에서 로그 변환은 선택한 변환 방식에 따라 해석이 달라질 수 있습니다.
+
+따라서 SO₂ 원자료 수준에서 OLS와 PPML 검증을 추가해, 주요 결과가 로그 변환 방식에만 의존하지 않는지 확인했습니다.
+
+---
+
+## 8. Development Notes
+
+이 프로젝트는 처음부터 현재의 분석 구조로 출발한 것은 아닙니다.
+
+초기 질문은 “한국 SECA 이후 규슈 SO₂가 줄었는가?”에 가까웠습니다. 하지만 SO₂의 월별 변화를 확인하면서 단순 전후 비교가 위험하다는 점이 분명해졌습니다. SO₂에는 뚜렷한 계절성이 있었고, 해안과 내륙 모두 봄부터 초여름에 높아지고 가을·겨울에 낮아지는 패턴을 보였습니다.
+
+그래서 분석 질문을 바꿨습니다.
+
+> 정책 이후 SO₂가 줄었는가?
+
+에서
+
+> 정책 이후 해안 관측소의 SO₂가 내륙 관측소에 비해 상대적으로 낮아졌는가?
+
+로 전환했습니다. 이 전환이 프로젝트의 핵심입니다.
+
+그 다음에는 DID의 전제 조건을 점검하기 위해 Event Study를 추가했습니다. 정책 이전부터 해안과 내륙의 추세가 크게 달랐다면 DID 결과를 정책 효과로 해석하기 어렵기 때문입니다.
+
+분석 과정에서 2020년에는 한국 SECA뿐 아니라 IMO 2020도 존재한다는 문제가 있었습니다. 따라서 두 정책 시점이 결과에 섞일 가능성을 줄이기 위해, IMO 2020과 한국 SECA를 같은 모형 안에서 함께 확인했습니다.
+
+또한 일부 내륙 관측소와 특정 기간에서 SO₂ 0값이 집중되는 문제가 확인되었습니다. 이를 그대로 두면 특정 관측소나 기간이 결과를 크게 흔들 수 있으므로, 해당 관측소 또는 기간을 제외한 보수적 재추정도 수행했습니다.
+
+결과적으로 이 프로젝트는 하나의 DID 결과를 보여주는 분석에서, 사전 추세와 여러 대체 설명을 함께 확인하는 정책 평가 프로젝트로 발전했습니다.
+
+---
+
+## 9. Limitations
+
+이 프로젝트는 한국 SECA가 규슈 북부의 SO₂에 영향을 주었을 가능성을 관측 자료로 검토한 분석입니다. 다만 다음 한계가 있습니다.
+
+첫째, 실제 선박별 AIS 운항 자료나 배출량 추정 자료를 직접 결합하지 않았습니다. 따라서 실제 배출 감소량과 규슈 관측소의 SO₂ 변화를 직접 연결한 분석은 아닙니다.
+
+둘째, HYSPLIT back trajectory는 보조적으로 사용했지만, 고해상도 대기화학모델을 통한 직접적 메커니즘 검증은 아닙니다.
+
+셋째, IMO 2020과 한국 SECA Step 1은 모두 2020년에 시행되었습니다. 같은 모형에서 두 시점을 함께 고려했지만, 두 규제의 효과를 완전히 분리하는 데는 한계가 있습니다.
+
+넷째, 일부 관측소와 기간에서 SO₂ 0값이 집중되는 문제가 있었습니다. 보수적 재추정에서도 부호는 대체로 유지되었지만, 저농도 구간의 측정·보고 단위 문제는 추정 정밀도를 제한할 수 있습니다.
+
+다섯째, 분석 대상은 후쿠오카·사가·나가사키로 제한됩니다. 결과를 일본 전체나 동아시아 전체로 일반화하기는 어렵습니다.
+
+여섯째, 해안 관측소 정의에는 불확실성이 있습니다. 해안선까지의 거리, 부산항까지의 거리, 해안 개방성을 사용했지만, 실제 대기 이동과 노출 강도를 완벽하게 반영한다고 볼 수는 없습니다.
+
+향후 개선 방향은 AIS 기반 선박 운항 자료, 배출량 추정 자료, 더 높은 시간 해상도의 대기질 자료, 표준화된 품질관리 절차를 결합하는 것입니다.
+
+---
+
+## 10. How to Run
+
+의존성을 설치합니다.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2) Run (local)
+기본 DID 분석을 실행합니다.
 
 ```bash
 python scripts/01_main_did_step1.py
+```
+
+Event Study를 실행합니다.
+
+```bash
 python scripts/02_event_study_step1.py
+```
+
+Robustness 검증을 실행합니다.
+
+```bash
 python scripts/03_robustness_suite_step1.py
-python scripts/05_treatment_defs_step1.py
+```
+
+SO₂ 원자료 수준의 OLS와 PPML 검증을 실행합니다.
+
+```bash
 python scripts/04_level_so2_ols_ppml.py
 ```
 
-All outputs are saved under `outputs/`.
-
----
-
-## Run in Google Colab (optional)
-
-In Colab, local packages may not be discoverable by default.
-If you see `ModuleNotFoundError: No module named 'step1_did'`, run with `PYTHONPATH=$PWD`:
+해안 관측소 정의 변경 검증을 실행합니다.
 
 ```bash
-%cd /content/Portfolio/Causal_Inference_SECA
-!pip install -r requirements.txt
-
-!PYTHONPATH=$PWD:$PYTHONPATH python scripts/01_main_did_step1.py
-!PYTHONPATH=$PWD:$PYTHONPATH python scripts/02_event_study_step1.py
-!PYTHONPATH=$PWD:$PYTHONPATH python scripts/03_robustness_suite_step1.py
-!PYTHONPATH=$PWD:$PYTHONPATH python scripts/05_treatment_defs_step1.py
-!PYTHONPATH=$PWD:$PYTHONPATH python scripts/04_level_so2_ols_ppml.py
+python scripts/05_treatment_defs_step1.py
 ```
 
----
+실행 결과는 `outputs/` 폴더에 저장됩니다.
 
-## Data notes
+주요 출력 파일은 다음과 같습니다.
 
-* `data/df_iv.csv` is a **trimmed** panel that includes only columns needed to reproduce the results in this repo.
-* To run with your own panel, replace `data/df_iv.csv` (same column names required).
+- `outputs/main_did_step1.csv`
+- `outputs/event_study_step1_M2.csv`
+- `outputs/event_study_step1_M2.png`
+- `outputs/robustness_suite_step1.csv`
+- `outputs/level_so2_ols_ppml_m2.csv`
+- `outputs/robustness_treatment_defs_step1.csv`
 
-### Optional: rebuild a shareable trimmed dataset
+Google Colab에서 실행할 때 `step1_did` 모듈을 찾지 못하는 경우, 다음처럼 `PYTHONPATH`를 지정해 실행합니다.
 
 ```bash
-python scripts/00_prepare_df_iv_for_github.py
+PYTHONPATH=$PWD:$PYTHONPATH python scripts/01_main_did_step1.py
 ```
 
 ---
 
-## Citation
+## 11. Project Structure
 
-If you use this repository or its outputs, please cite:
-
-Park, Dongha. *Korea SECA → Kyushu SO₂: Step 1 Policy Evaluation (Reproducible DID + Event Study).* (Year).
-Repository: [https://github.com/Ha-minss/Portfolio/tree/main/Causal_Inference_SECA](https://github.com/Ha-minss/Portfolio/tree/main/Causal_Inference_SECA)
-
-### BibTeX (optional)
-
-```bibtex
-@misc{park_seca_kyushu_step1,
-  author       = {Park, Dongha},
-  title        = {Korea SECA → Kyushu SO2: Step 1 Policy Evaluation (Reproducible DID + Event Study)},
-  year         = {2026},
-  howpublished = {\url{https://github.com/Ha-minss/Portfolio/tree/main/Causal_Inference_SECA}},
-  note         = {Accessed 2026-01-07}
-}
+```text
+causal-inference-seca/
+├── README.md
+├── requirements.txt
+├── data/
+│   ├── df_iv.csv
+│   └── README.md
+├── scripts/
+│   ├── 00_prepare_df_iv_for_github.py
+│   ├── 01_main_did_step1.py
+│   ├── 02_event_study_step1.py
+│   ├── 03_robustness_suite_step1.py
+│   ├── 04_level_so2_ols_ppml.py
+│   └── 05_treatment_defs_step1.py
+├── step1_did/
+│   ├── config.py
+│   ├── io.py
+│   ├── prep.py
+│   ├── models.py
+│   ├── utils.py
+│   └── wild.py
+└── notebooks_run_in_colab_step1.ipynb
 ```
+
+`data/`는 공유용 분석 데이터와 데이터 설명을 담고 있습니다.
+
+`scripts/`는 결과를 재현하는 실행 스크립트입니다. 기본 DID, Event Study, Robustness 검증, PPML 검증, 해안 정의 변경 검증을 각각 분리했습니다.
+
+`step1_did/`는 여러 스크립트에서 공통으로 사용하는 데이터 로딩, 전처리, 모형 실행, 유틸리티 코드를 담고 있습니다.
+
+노트북은 Colab 실행을 위한 보조 파일이며, 최종 재현은 스크립트 실행을 기준으로 합니다.
 
 ---
 
-## Contact
+## 12. What This Project Demonstrates
 
-If you find a bug or want to reproduce a specific table/figure, open an issue (or message me) with:
+이 프로젝트는 단순히 DID를 실행한 분석이 아니라, 정책 효과를 관측 데이터로 검토할 때 필요한 분석 설계를 보여줍니다.
 
-* script name
-* exact command you ran
-* full error log
+첫째, 현실 정책 질문을 분석 가능한 비교 구조로 바꿨습니다. “정책 이후 SO₂가 줄었는가?”라는 질문을 “정책 이후 해안 관측소의 SO₂가 내륙 관측소에 비해 상대적으로 낮아졌는가?”라는 DID 질문으로 재정의했습니다.
+
+둘째, 관측소-월 패널 데이터를 구성했습니다. 대기오염 자료, 기상 자료, 경제활동 자료, 관측소 위치 정보를 결합해 분석 가능한 데이터 구조를 만들었습니다.
+
+셋째, DID와 Event Study를 사용해 정책 전후의 상대 변화를 추정하고, 사전 추세를 점검했습니다.
+
+넷째, placebo test, NO₂ 검증, IMO 2020 동시 통제, Robustness 검증, PPML 검증을 통해 결과가 특정 사양 하나에만 의존하지 않는지 확인했습니다.
+
+다섯째, 결과를 과장하지 않고 한계와 함께 해석했습니다. 주요 결과는 약 9~10% 하락 방향을 보였지만, 이를 확정적 인과효과라고 단정하지 않고, 관측 데이터에서 확인된 제한적 신호로 해석했습니다.
+
+이 프로젝트가 보여주는 핵심 역량은 **정책 질문을 데이터 분석 문제로 구조화하고, 비교집단과 식별 가정을 설정하며, 결과를 여러 방식으로 검증하고, 해석 가능한 범위 안에서 결론을 제시하는 능력**입니다.
