@@ -1,6 +1,6 @@
 # 소비지원 정책은 매출 지표를 얼마나 오래 흔드는가?
 
-태국 Half-Half 계열 소비지원 정책 이후 **숙박·음식서비스업 지표가 저노출 업종 대비 어떻게 반응했고, 그 반응이 정책 종료 후에도 어느 정도 남았는지** 분석한 정책평가 프로젝트입니다.
+태국 Half-Half 계열 소비지원 정책 이후 **숙박·음식서비스업 지표가 저노출 업종 대비 어떻게 반응했고, 그 반응이 몇 개월 동안 남았는지** 분석한 정책평가 프로젝트입니다.
 
 이 프로젝트는 정책으로 오른 매출을 곧바로 지속 상환여력으로 해석하지 않습니다. 정책 당월 반응, 1~3개월 lag 반응, 누적 반응, synthetic comparator, placebo, robustness를 함께 확인해 **정책성 매출과 지속 수요 신호를 구분하는 분석 흐름**을 설계했습니다.
 
@@ -12,7 +12,7 @@
 
 정책 기간에만 발생한 주문이라면 일시적 수요일 수 있고, 종료 후에도 유지된다면 신규 고객 유입이나 반복 수요의 신호일 수 있습니다.
 
-본 프로젝트는 태국 Half-Half 계열 소비지원 정책 이후 숙박·음식서비스업 지표가 어떻게 반응했는지 분석합니다. 특히 숙박·음식서비스업을 정책 노출도가 높은 업종으로 보고, 금융업·부동산업·전문서비스업을 저노출 비교업종으로 설정했습니다.
+본 프로젝트는 태국 Half-Half 계열 소비지원 정책 이후 숙박·음식서비스업 지표가 어떻게 반응했는지 분석합니다. 숙박·음식서비스업을 정책 노출도가 높은 업종으로 보고, 금융업·부동산업·전문서비스업을 저노출 비교업종으로 설정했습니다.
 
 핵심 질문은 다음과 같습니다.
 
@@ -51,7 +51,7 @@
 
 둘째, 소비지원 정책강도를 월별로 정의하고, 정책 당월과 1~3개월 후 반응을 분리합니다.
 
-셋째, 단순 비교업종 평균과 synthetic comparator를 함께 사용해 결과가 비교 기준에만 의존하지 않는지 확인합니다.
+셋째, 단순 비교업종 평균과 synthetic comparator를 함께 사용해 결과가 비교 기준 하나에만 의존하지 않는지 확인합니다.
 
 넷째, placebo와 robustness 검증을 통해 결과를 어디까지 해석할 수 있는지 점검합니다.
 
@@ -142,7 +142,7 @@ Cumulative Response 0:3 = β0 + β1 + β2 + β3
 
 ## 5. Implementation
 
-이 프로젝트는 정책성 매출 반응을 한 번의 회귀 결과로만 제시하지 않고, 그림과 robustness를 함께 확인하는 구조로 정리하는 것이 중요합니다.
+이 프로젝트는 정책성 매출 반응을 한 번의 회귀 결과로만 제시하지 않고, 비교 기준과 robustness를 함께 확인하는 구조로 정리했습니다.
 
 전체 구현 흐름은 다음과 같습니다.
 
@@ -157,7 +157,16 @@ Cumulative Response 0:3 = β0 + β1 + β2 + β3
 9. placebo와 robustness 검증을 수행합니다.
 10. 결과를 플랫폼 대출의 매출 해석 기준으로 연결합니다.
 
-이 구현 구조의 목적은 단일 회귀 결과를 보여주는 것이 아니라, 정책성 매출 반응을 `상대 gap → policy lag → 누적 반응 → 비교 기준 변경 → placebo/robustness → 대출 해석` 순서로 재현 가능하게 확인하는 것입니다.
+이 구현 구조의 목적은 단일 회귀 결과를 보여주는 것이 아니라, 정책성 매출 반응을 다음 순서로 재현 가능하게 확인하는 것입니다.
+
+```text
+상대 gap 구성
+→ policy lag model
+→ 0~3개월 누적 반응
+→ synthetic comparator 비교
+→ placebo/robustness
+→ 플랫폼 대출 해석
+```
 
 ---
 
@@ -182,11 +191,10 @@ Cumulative Response 0:3 = β0 + β1 + β2 + β3
 
 따라서 이 프로젝트는 숙박·음식서비스업 단독 지표가 아니라, 저노출 업종 대비 상대 차이를 사용했습니다.
 
-![업종 지표와 정책 기간](outputs/figures/main_01_industry_series_policy_window.png)
-
-이 그림은 정책 시기 전후로 숙박·음식서비스업과 비교업종이 어떻게 움직였는지 보여주는 역할을 합니다. 단순히 숙박·음식서비스업 지표가 상승했는지보다, 비교업종과의 차이가 어떻게 벌어졌는지를 보는 것이 중요합니다.
-
-![숙박·음식서비스업과 저노출 업종 간 상대 gap](outputs/figures/main_02_afs_low_exposure_gap.png)
+| 비교 방식 | 보는 값 | 해석 |
+|---|---|---|
+| 단순 업종 지표 | 숙박·음식서비스업 지표 자체 | 업종이 올랐는지는 알 수 있지만 공통 경기 흐름과 구분하기 어려움 |
+| 상대 gap | 숙박·음식서비스업 - 저노출 업종 | 다른 업종 흐름을 감안해도 더 강하게 움직였는지 확인 가능 |
 
 gap이 커진다는 것은 숙박·음식서비스업이 금융업·부동산업·전문서비스업 평균 대비 상대적으로 더 강하게 움직였다는 의미입니다. 따라서 이 gap을 기준으로 정책 시기의 상대반응을 분석했습니다.
 
@@ -204,8 +212,6 @@ gap이 커진다는 것은 숙박·음식서비스업이 금융업·부동산업
 | 3개월 후 β3 | 0.0679 | 약 +7.0% | 0.0316 | 0.032 | 양의 반응 |
 | 0~3개월 누적 반응 | 0.1667 | 약 +18.1% | 0.0602 | - | 누적 반응은 양의 방향 |
 
-![정책강도 lag 계수](outputs/figures/main_03_policy_lag_coefficients.png)
-
 정책 당월 계수는 거의 0에 가깝고 유의하지 않았습니다. 즉, 정책이 시작된 달에 숙박·음식서비스업이 저노출 업종보다 바로 크게 뛰었다고 보기는 어렵습니다.
 
 반면 1~3개월 lag 계수는 모두 양의 방향이었습니다. 특히 3개월 후 계수는 유의했고, 0~3개월 누적 반응도 양의 방향으로 나타났습니다.
@@ -222,7 +228,9 @@ gap이 커진다는 것은 숙박·음식서비스업이 금융업·부동산업
 
 이 프로젝트에서는 β0~β3을 합산한 0~3개월 누적 반응을 핵심 지표로 보았습니다.
 
-![0~3개월 누적 반응](outputs/figures/main_04_cumulative_response_0_3.png)
+| 누적 지표 | 값 | % 해석 | 판단 |
+|---|---:|---:|---|
+| β0 + β1 + β2 + β3 | 0.1667 | 약 +18.1% | 0~3개월 누적 상대반응은 양의 방향 |
 
 0~3개월 누적 반응은 0.1667로, 로그 계수 기준 약 +18.1%의 양의 상대반응에 해당합니다.
 
@@ -242,14 +250,12 @@ gap이 커진다는 것은 숙박·음식서비스업이 금융업·부동산업
 
 synthetic comparator는 정책 전 기간의 움직임을 더 비슷하게 맞춘 비교 기준입니다.
 
-![Synthetic comparator 비교](outputs/figures/main_05_synthetic_comparator_gap.png)
-
-두 기준 모두에서 0~3개월 누적 반응은 양의 방향을 유지했습니다.
-
 | 비교 기준 | 0~3개월 누적 반응 | 해석 |
 |---|---:|---|
 | 저노출 업종 평균 | 양의 방향 | 기본 비교 기준에서도 누적 반응 확인 |
 | Synthetic comparator | 양의 방향 | 비교 기준을 바꿔도 주요 패턴 유지 |
+
+두 기준 모두에서 0~3개월 누적 반응은 양의 방향을 유지했습니다.
 
 즉, “정책 당월보다 lag 누적 반응이 중요하다”는 메인 패턴은 비교 기준을 바꿔도 크게 달라지지 않았습니다.
 
@@ -260,8 +266,6 @@ synthetic comparator는 정책 전 기간의 움직임을 더 비슷하게 맞�
 ### 6.5 Placebo는 과잉 해석을 막는 경고 신호였다
 
 placebo test에서는 정책이 없던 가짜 시점을 설정해, 비슷한 gap 변화가 우연히 나타날 수 있는지 확인했습니다.
-
-![Placebo 결과](outputs/figures/main_06_placebo_test.png)
 
 placebo 결과에서는 일부 가짜 시점에서도 gap 변화가 나타났습니다. 이는 메인 결과를 완전히 부정한다기보다, 결과를 순수 정책효과로 과잉 해석하지 말아야 한다는 경고로 보는 것이 적절합니다.
 
@@ -278,8 +282,6 @@ placebo 결과에서는 일부 가짜 시점에서도 gap 변화가 나타났습
 ### 6.6 Robustness 검증에서도 누적 반응의 중앙값은 양의 방향을 유지했다
 
 추가로 비교군 구성, lag 길이, outcome 변환, 통제변수 조합, washout 기간, policy block 정의를 바꾼 robustness 검증을 수행했습니다.
-
-![Robustness summary](outputs/figures/main_07_robustness_summary.png)
 
 robustness 검증 결과, 누적 policy-lag 반응의 중앙값은 양의 방향을 유지했습니다.
 
@@ -302,13 +304,7 @@ robustness 검증 결과, 누적 policy-lag 반응의 중앙값은 양의 방향
 
 정책 시기에는 관련 업종 지표가 당월보다 1~3개월에 걸쳐 누적적으로 반응할 수 있습니다. 이 반응에는 정책효과뿐 아니라 관광 수요, 연말 소비, 업종 회복 흐름이 함께 섞일 수 있습니다.
 
-![대출 판단에서 정책성 매출 해석](outputs/figures/main_08_lending_implication.png)
-
 대출에서 최근 매출 증가를 그대로 상환여력으로 반영하는 것은 위험합니다.
-
-정책기간에만 발생한 매출이라면 한도 산정에서 할인하거나 모니터링 대상으로 두는 것이 적절합니다. 반대로 정책 종료 후에도 유지되는 매출이라면 일부는 고객 기반 확대나 반복 수요의 신호로 볼 수 있습니다.
-
-정리하면 다음과 같습니다.
 
 | 매출 패턴 | 대출 해석 | 운영 판단 |
 |---|---|---|
@@ -421,7 +417,6 @@ PYTHONPATH=$PWD:$PYTHONPATH python scripts/02_policy_lag_model.py
 PYTHONPATH=$PWD:$PYTHONPATH python scripts/03_synthetic_comparator.py
 PYTHONPATH=$PWD:$PYTHONPATH python scripts/04_placebo_tests.py
 PYTHONPATH=$PWD:$PYTHONPATH python scripts/05_robustness_suite.py
-PYTHONPATH=$PWD:$PYTHONPATH python scripts/06_lending_implication_figures.py
 ```
 
 실행 결과는 `outputs/` 폴더에 저장됩니다.
@@ -441,8 +436,7 @@ thailand-policy-revenue-persistence/
 │   ├── 01_policy_timeline_and_data.ipynb
 │   ├── 02_lag_model_results.ipynb
 │   ├── 03_synthetic_comparator.ipynb
-│   ├── 04_placebo_and_robustness.ipynb
-│   └── 05_lending_implications.ipynb
+│   └── 04_placebo_and_robustness.ipynb
 ├── scripts/
 │   ├── 00_prepare_monthly_panel.py
 │   ├── 01_make_gap_series.py
@@ -450,15 +444,13 @@ thailand-policy-revenue-persistence/
 │   ├── 03_synthetic_comparator.py
 │   ├── 04_placebo_tests.py
 │   ├── 05_robustness_suite.py
-│   ├── 06_lending_implication_figures.py
 │   └── run_all.py
 ├── src/
 │   └── thailand_policy/
 │       ├── features.py
 │       ├── lag_model.py
 │       ├── synthetic.py
-│       ├── robustness.py
-│       └── plotting.py
+│       └── robustness.py
 └── outputs/
     ├── figures/
     └── tables/
