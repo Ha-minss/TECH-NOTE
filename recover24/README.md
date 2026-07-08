@@ -1,327 +1,447 @@
-# NLP PROJECT
+# Recover24
 
-This repository contains NLP/LLM projects focused on information extraction, document automation, evaluation workflows, and safety-oriented AI systems.
+보이스피싱·금융사기 피해자의 자연어 진술을 구조화하고, 은행 담당자가 검토할 수 있는 문서 패키지와 내부 검토 큐를 생성하는 LLM 기반 피해 접수/문서화 프로토타입입니다.
 
-## Project 01. Recover24 V3
-
-**Recover24 V3** is an NLP/LLM-based recovery workflow for financial fraud incidents.
-The project focuses on converting victim statements and structured form inputs into safer, reviewable recovery documents.
-
-The main goal is not to let an LLM make final safety decisions. Instead, the system uses LLMs only where natural language understanding is useful, while deterministic code handles conflict detection and document generation safety gates.
+이 프로젝트는 “피해자가 챗봇에 말하면 바로 보상한다”는 자동 판단 시스템이 아닙니다. 피해자가 흩어진 사실관계를 정리하고, 은행 담당자가 빠르게 확인할 수 있도록 **사건 구조화, 누락 질문, 제출 준비도 점검, 문서 생성, 감사 로그**를 분리한 운영 보조 시스템입니다.
 
 ---
 
-## Core Idea
+## 1. Overview
 
-Recover24 V3 evaluates whether a financial fraud recovery document can be safely generated from user-provided information.
+보이스피싱 피해자는 사고 직후 무엇을 먼저 해야 하는지, 은행·경찰·통신사·카드사에 어떤 정보를 제출해야 하는지 알기 어렵습니다.
 
-The workflow separates the problem into three evaluation tracks:
+피해자는 보통 긴장한 상태에서 사건을 설명해야 하고, 상담원은 피해 시각, 송금 내역, 사칭자 정보, 악성앱 설치 여부, 신분증·OTP·계좌정보 노출 여부, 지급정지 요청 여부, 증빙자료 보유 여부를 빠르게 확인해야 합니다.
 
-| Track                        | Purpose                                                                                | LLM Used? |
-| ---------------------------- | -------------------------------------------------------------------------------------- | --------- |
-| A. Normalization & Rendering | Normalize form inputs into canonical JSON and verify rendered document fields          | No        |
-| B. Narrative Fact Coverage   | Judge whether generated narratives include required facts and avoid unsupported claims | Yes       |
-| C. Consistency & Safety Gate | Extract facts from free-form statements and detect conflicts with form inputs          | Yes       |
+Recover24는 이 문제를 **피해자 자연어 진술을 은행 접수 가능한 사건 구조로 바꾸는 문제**로 정의했습니다.
 
----
-
-## System Design
-
-### A. Form Normalization & Rendering
-
-This track checks whether structured form inputs are correctly normalized into canonical fields.
-
-Example:
+핵심 흐름은 다음과 같습니다.
 
 ```text
-Input: 17915000원
-Canonical: damage_amount_krw = 17915000
-Rendered: 17,915,000원
+피해자 자연어 진술
+→ LLM 기반 최초 사실 추출
+→ RecoveryCaseV1 사건 JSON 생성
+→ 규칙 엔진으로 누락 필드/위험 신호/다음 질문 계산
+→ 명시적 질문 ID 기반 후속 답변 반영
+→ 문서 제출 준비도 점검
+→ 피해구제/경찰 신고/은행 상담용 문서 패키지 생성
+→ 은행 담당자 검토 큐와 콘솔 ViewModel 생성
+→ Audit Trail 기록
 ```
 
-This step is deterministic and does not use an LLM.
+Recover24의 핵심은 LLM이 최종 판단자가 되지 않도록 역할을 나누는 것입니다.
+
+LLM은 피해자의 자유로운 진술에서 사실 후보를 추출하는 데 사용합니다. 반면 누락 필드, 다음 질문, 제출 준비도, 증빙 체크리스트, 문서 출력은 구조화된 case model과 규칙 기반 로직으로 관리합니다.
+
+따라서 이 프로젝트의 결론은 다음과 같습니다.
+
+> LLM은 피해 접수의 판단자가 아니라, 피해자의 비정형 진술을 은행 담당자가 검토 가능한 사건 패키지로 정리하는 보조 계층이어야 한다.
 
 ---
 
-### B. Narrative Fact Coverage
+## 2. Problem & Objective
 
-This track evaluates whether a generated incident narrative includes required elements such as:
+보이스피싱 피해 접수는 단순 FAQ 챗봇으로 해결하기 어렵습니다.
 
-* Damage amount
-* Police report status
-* Required recovery-related facts
-* Unsupported or contradictory claims
+피해자가 “사기를 당했다”고 말해도 실제로 은행이 확인해야 할 정보는 사건 유형에 따라 크게 달라집니다.
 
-DeepSeek is used as an LLM judge for semantic evaluation.
+예를 들어 가족 사칭 메신저피싱이면 신분증·카드·계좌정보 노출 여부와 원격제어앱 설치 여부가 중요합니다. 대출 사칭형이면 현금 전달, 지정 계좌 송금, 대출 실행 여부, 사칭 기관 정보가 중요합니다. 악성앱이나 명의도용이 포함되면 통신사 신고, 명의도용 계좌·휴대폰 개통 여부, 무단 대출·카드론 여부까지 확인해야 합니다.
 
-The judge returns structured labels such as:
+따라서 Recover24가 해결하려는 문제는 다음과 같습니다.
 
-```json
-{
-  "elements": [
-    {
-      "id": "amount",
-      "label": "present",
-      "evidence": "피해금액은 17,915,000원"
-    }
-  ],
-  "unsupported_claims": [],
-  "contradictions": []
-}
-```
+| 문제 | 기존 방식의 어려움 | Recover24의 접근 |
+|---|---|---|
+| 피해 진술이 비정형적임 | 피해자가 시간순·항목별로 말하기 어렵다 | 자연어 진술을 사건 JSON으로 구조화 |
+| 사건 유형마다 필요한 질문이 다름 | 고정 질문지만으로는 누락이 생긴다 | 사건 유형과 누락 필드에 따라 다음 질문 생성 |
+| 제출 서류가 복잡함 | 피해자가 어떤 자료를 준비해야 하는지 모른다 | 증빙 체크리스트와 문서 준비도 계산 |
+| 상담원 검토 부담이 큼 | 매번 긴 진술을 다시 읽고 정리해야 한다 | Case Brief, 상담 메모, 제출 문서 패키지 생성 |
+| LLM 오판 위험이 있음 | 잘못된 자동 판단은 피해자에게 더 큰 혼란을 준다 | LLM 추출과 규칙/문서/검토 단계를 분리 |
+| 개인정보와 민감 정보가 많음 | 로그·출력·보관 정책이 중요하다 | 감사 로그와 마스킹, 사람 검토 전제 |
 
----
+이 프로젝트의 목표는 세 가지입니다.
 
-### C. Consistency & Safety Gate
+첫째, 피해자 자연어 진술을 `RecoveryCaseV1` 구조로 변환합니다.
 
-This is the safety-critical track.
+둘째, 사건 상태를 기준으로 누락 정보와 다음 질문을 생성해 피해 접수를 완성해 갑니다.
 
-The LLM extracts candidate facts from the victim's free-form statement.
+셋째, 은행 담당자가 검토할 수 있는 문서 패키지, 검토 콘솔 데이터, 감사 로그를 생성합니다.
 
-Example:
-
-```text
-Raw statement:
-총 30415000원을 송금했습니다.
-```
-
-The LLM extractor returns:
-
-```json
-{
-  "statement_facts": {
-    "damage_amount_krw": 30415000
-  }
-}
-```
-
-Then deterministic code compares the extracted statement facts against the form facts.
-
-Example:
-
-```text
-Form amount: 17,915,000원
-Statement amount: 30,415,000원
-
-Result:
-- Conflict detected
-- Document generation blocked
-- Human review required
-```
-
-The LLM does not decide whether to block the document.
-The final safety decision is handled by deterministic conflict-checking logic.
+Recover24는 112 신고나 은행의 공식 심사를 대체하지 않습니다. 은행 웹/앱에 탑재될 수 있는 **사전 접수·문서화 레이어**로 설계했습니다.
 
 ---
 
-## Evaluation Results
+## 3. Data
 
-Current MVP evaluation uses datasets derived from existing Recover24 gold cases.
+Recover24는 실제 고객 데이터를 사용하지 않고, 보이스피싱 사례를 기반으로 한 골든셋과 합성 보강 시나리오를 사용했습니다.
 
-| Evaluation Track             |                   Cases | Result |
-| ---------------------------- | ----------------------: | ------ |
-| A. Normalization & Rendering |                      20 | Passed |
-| B. Narrative LLM Judge       | 18 eligible / 2 skipped | Passed |
-| C. Consistency LLM Extractor |                      20 | Passed |
+평가용 골드 데이터셋은 34건의 피해 사례 검토표를 기준으로 구성했습니다. 이 중 개별 피해 접수 시나리오로 평가 가능한 사례와 통계성 자료를 구분하고, 모든 사건은 사람 검토가 필요한 접수 사례로 다루었습니다.
 
-Latest local test result:
+| 항목 | 내용 |
+|---|---|
+| 평가 사례 수 | 34건 |
+| 주요 사례 유형 | 메신저피싱, 대출사기, 기관사칭, 스미싱, 악성앱, 명의도용, 대면편취 |
+| 주요 채널 | 문자, 카카오톡, 전화, 인터넷 광고, 인터넷 카페 |
+| 주요 피해 형태 | 계좌이체, 현금 전달, 카드론·현금서비스, 명의도용 계좌/휴대폰, 악성앱 설치 |
+| 평가 원칙 | 원문 기반 사실과 데모용 보강값을 구분 |
+| 운영 판단 | 모든 케이스는 human review 필요 |
 
-```text
-74 passed
-```
+평가 데이터에서 중요하게 본 정보는 다음과 같습니다.
 
-DeepSeek evaluator integration was verified with no fallback usage:
+| 정보 그룹 | 예시 |
+|---|---|
+| 사건 유형 | 가족 사칭, 대출 사칭, 공공기관 사칭, 악성앱, 명의도용 |
+| 접촉 채널 | 문자, 전화, 카카오톡, 인터넷 광고 |
+| 피해 금액 | 송금 금액, 현금 전달 금액, 카드론/대출 실행 금액 |
+| 노출 정보 | 신분증, 계좌정보, 카드정보, 비밀번호, OTP, 인증서 |
+| 악성앱/원격제어 | 악성앱 설치 여부, 팀뷰어 등 원격제어앱 여부 |
+| 명의도용 위험 | 휴대폰 개통, 계좌 개설, 무단 대출, 카드론, 소액결제 |
+| 사후 조치 | 지급정지 요청, 경찰 신고, 통신사 신고, 상담번호 |
+| 증빙자료 | 문자/카톡 캡처, 통화내역, 이체확인증, 신분증 사본 등 |
 
-```text
-Narrative judge:
-- judge_mode = llm
-- judge_fallback_count = 0
-- element_recall = 1.0
+이 프로젝트에서 중요한 점은 “정답 데이터에 맞춰 문장을 예쁘게 만드는 것”이 아니라, 피해 접수 업무에서 필요한 사실이 빠지지 않도록 하는 것입니다.
 
-Consistency extractor:
-- extractor_mode = llm
-- extractor_fallback_count = 0
-- extractor_accuracy = 1.0
-- conflict_recall = 1.0
-- conflict_precision = 1.0
-- blocking_accuracy = 1.0
-- false_block_rate = 0.0
-```
+따라서 평가는 일반 챗봇 답변 품질보다, 필수 사실 추출, 누락 질문, 금지 질문, 문서 준비도, 사람 검토 필요 여부를 중심으로 설계했습니다.
 
 ---
 
-## Project Structure
+## 4. Method / System Design
+
+Recover24의 핵심 설계 원칙은 **사건 상태를 하나로 유지하고, 각 계층의 책임을 분리하는 것**입니다.
+
+초기 버전에서는 후속 답변을 반영할 때 사건 전체를 다시 생성하는 흐름이 있었습니다. 이 구조에서는 날짜 질문 하나를 수정해도 증빙 상태가 사라지거나, 피해유형 수정이 문서 문구와 평가 문자열 실패로 이어질 수 있었습니다.
+
+그래서 구조를 다음처럼 정리했습니다.
 
 ```text
-Recover24_V3/
-├─ recover24/
-│  └─ providers/
-│     ├─ base.py
-│     ├─ gemma_colab.py
-│     └─ deepseek.py
-│
-├─ evaluation/
-│  ├─ run_all.py
-│  ├─ llm_json.py
-│  ├─ build_abc_datasets_from_gold.py
-│  │
-│  ├─ normalization/
-│  │  ├─ dataset.jsonl
-│  │  ├─ normalizer.py
-│  │  ├─ renderer_check.py
-│  │  ├─ metrics.py
-│  │  └─ runner.py
-│  │
-│  ├─ consistency/
-│  │  ├─ dataset.jsonl
-│  │  ├─ extractor.py
-│  │  ├─ llm_extractor.py
-│  │  ├─ conflict_checker.py
-│  │  ├─ metrics.py
-│  │  └─ runner.py
-│  │
-│  ├─ narrative/
-│  │  ├─ dataset.jsonl
-│  │  ├─ checklist.py
-│  │  ├─ judge.py
-│  │  ├─ metrics.py
-│  │  └─ runner.py
-│  │
-│  └─ gold/
-│     ├─ master_cases.jsonl
-│     └─ dataset_build_stats.json
-│
-├─ tests/
-├─ README.md
-├─ requirements.txt
-├─ .gitignore
-└─ .env.example
+RecoveryCaseV1
+  → deep copy
+  → 대상 필드만 patch
+  → 파생값 refresh
+  → invariant 검증
+  → 새 RecoveryCaseV1 반환
 ```
+
+핵심 계층은 다음과 같습니다.
+
+| 계층 | 책임 | 금지한 것 |
+|---|---|---|
+| `models.py` | Pydantic 사건 모델과 타입 정의 | 질문 생성, LLM 호출, 문서 출력 |
+| `catalogs.py` | 피해유형·증빙·은행명 정규화 catalog | case 변경, HTML 생성 |
+| `extraction.py` | 최초 자연어 진술에서 구조화 사실 추출 | 후속 답변 처리, 문서 출력 |
+| `intake/questions.py` | 누락 필드 기반 질문 생성 | 사용자 답변 파싱, case 변경 |
+| `intake/answer_router.py` | 질문의 handler_id로 답변 처리 라우팅 | 질문 문구 키워드로 handler 추측 |
+| `intake/answer_handlers.py` | 날짜·거래·증빙 등 대상 필드만 patch | 전체 case 재생성 |
+| `case_rules.py` | 총 피해액, 누락 필드, 다음 행동 등 파생값 재계산 | 사용자 입력값 초기화 |
+| `documents/view_model.py` | 문서 표시용 ViewModel 생성 | case 변경, 피해유형 재분류 |
+| `documents/html_renderer.py` | ViewModel 기반 HTML 출력 | 사건 추론, 증빙 상태 변경 |
+| `evaluation/` | 골든셋 시뮬레이션과 scoring | 제품 내부 로직에 직접 의존 |
+
+이 설계에서 `RecoveryCaseV1`은 유일한 사건 상태입니다. `ExtractedIncidentV1`은 최초 LLM 추출 결과를 전달하는 임시 DTO로만 사용하고, 후속 답변 처리에서는 사용하지 않습니다.
+
+질문도 문장 자체로 라우팅하지 않습니다. 각 질문은 `question_id`, `field_path`, `handler_id`, `category`를 가집니다.
+
+예를 들어 날짜 질문은 다음처럼 명시적으로 정의됩니다.
+
+```text
+question_id: timeline.first_discovered_at
+field_path: accidentInfo.firstDiscoveredAt
+handler_id: timeline.first_discovered_at
+category: timeline
+```
+
+이렇게 하면 질문 문구가 조금 바뀌어도 평가기나 답변 처리기가 질문 종류를 오해하지 않습니다.
 
 ---
 
-## Setup
+## 5. Implementation
 
-Install dependencies:
+Recover24는 단일 챗봇 함수가 아니라, 접수 흐름을 여러 모듈로 나누어 구현합니다.
+
+구현 흐름은 다음과 같습니다.
+
+1. 피해자의 최초 자연어 진술을 입력받습니다.
+2. LLM provider가 구조화 JSON 후보를 생성합니다.
+3. `extraction.py`가 추출 결과를 검증하고 `RecoveryCaseV1`을 생성합니다.
+4. `case_rules.py`가 누락 필드, 위험도, 다음 행동, 증빙 체크리스트를 계산합니다.
+5. `questions.py`가 `QuestionSpec` 기반 다음 질문을 생성합니다.
+6. 피해자가 후속 질문에 답하면 `answer_router.py`가 handler를 선택합니다.
+7. `answer_handlers.py`가 해당 필드만 patch합니다.
+8. `refresh_case()`가 파생값만 다시 계산합니다.
+9. `DocumentViewModel`을 생성합니다.
+10. HTML 문서, Case Brief, 상담 메모, reviewer console view를 생성합니다.
+11. `AuditTrail`에 변경 이력을 기록합니다.
+
+주요 실행 흐름은 다음과 같이 이해할 수 있습니다.
+
+```text
+start_case()
+  → analyze_initial_statement()
+  → build_case_from_extraction()
+  → refresh_case()
+  → build_questions()
+  → apply_answer()
+  → build_document_view_model()
+  → render_case_html()
+  → write_case_artifacts()
+```
+
+문서 출력은 Recover24의 중요한 기능입니다. 생성 대상은 단일 서류가 아니라 은행·경찰·피해구제 신청에 필요한 정보를 묶은 검토 패키지입니다.
+
+| 출력 문서/뷰 | 포함하는 정보 |
+|---|---|
+| 경찰 신고용 피해 내용 정리문 | 사건 개요, 사칭자 정보, 피해 일시, 송금내역, 피해 과정, 신고 이유, 증빙자료 |
+| 피해구제신청서용 정보 요약 | 피해자 정보, 송금내역, 사기이용계좌 정보, 피해구제 요청 사유 |
+| 전자금융거래 사고 피해 신고 보조 자료 | 사고 발생/인지/지급정지 시각, 거래내역, 사고 경위, 사후 조치 |
+| 은행/112 지급정지 전화 메모 | 피해금액, 출금은행, 입금은행/계좌, 송금시각, 지급정지 요청 여부 |
+| Reviewer Console View | 담당자가 볼 사건 요약, 누락 정보, 위험 신호, 다음 조치 |
+| Audit Trail | 사건 생성, 필드 변경, 문서 생성 이력 |
+
+이 문서들은 공식 서식을 대체하지 않습니다. 실제 제출 전에는 금융회사, 경찰, 관계기관의 최신 양식과 안내를 확인해야 합니다.
+
+---
+
+## 6. Evaluation
+
+Recover24의 평가는 일반 챗봇 답변 품질이 아니라 **피해 접수 업무 완성도**를 기준으로 설계했습니다.
+
+중요한 평가지표는 다음과 같습니다.
+
+| 평가 기준 | 보는 것 | 이유 |
+|---|---|---|
+| Critical Field Extraction | 피해 금액, 거래, 노출 정보, 악성앱, 명의도용 위험 등 핵심 사실 추출 | 접수 문서와 조치 판단의 기반 |
+| Critical Missing Field Recall | 반드시 추가 질문해야 하는 누락 정보 포착 | 피해자에게 필요한 질문을 빠뜨리지 않기 위함 |
+| Next Question Quality | 사건 유형에 맞는 다음 질문 생성 | 고정 질문 반복을 줄이기 위함 |
+| Forbidden Question Avoidance | 이미 알거나 부적절한 질문 반복 방지 | 피해자 경험과 접수 효율 개선 |
+| Document Completion Rate | 문서 제출에 필요한 필드가 얼마나 채워졌는지 | 은행 담당자 검토 가능성 판단 |
+| Human Review Routing | 사람 검토 필요 여부 | 자동 판단 위험 방지 |
+| Hallucination / Unsupported Claim | 원문에 없는 사실을 생성하지 않는지 | 민감 사건에서 허위 정보 방지 |
+| Auditability | 어떤 답변으로 어떤 필드가 변경됐는지 추적 | 운영 검토와 장애 분석 |
+
+골든셋 검토에서는 모든 케이스가 사람 검토가 필요한 사건으로 분류되었습니다. 이는 Recover24가 자동 보상·자동 판단 시스템이 아니라, 은행 담당자에게 검토 가능한 사건 패키지를 전달하는 구조임을 보여줍니다.
+
+초기 평가와 리팩터링 과정에서 확인한 대표적인 실패 모드는 다음과 같습니다.
+
+| 실패 모드 | 문제 | 개선 방향 |
+|---|---|---|
+| 송금형 질문 반복 | 악성앱·명의도용 사건에도 출금은행/입금은행/송금시각만 반복 질문 | 사건 유형별 질문 group과 `QuestionSpec` 도입 |
+| 후속 답변 반영 시 case 재생성 | 날짜 하나 수정해도 증빙 상태나 다른 필드가 손상될 수 있음 | handler 기반 대상 필드 patch로 변경 |
+| 질문 문구 기반 평가 | 질문 문장이 바뀌면 평가기가 질문 종류를 오분류 | `question_id`, `category`, `field_path` 기반 평가 |
+| HTML renderer의 재추론 | 문서 출력 단계에서 피해유형·증빙 상태가 바뀔 수 있음 | `DocumentViewModel` 단일화 |
+| 문서 필수 항목 누락 | 피해구제/신고 서류에 필요한 필드가 빠짐 | Document Completion Engine과 누락 필드 계산 |
+| 내부 처리 메시지 노출 | “local 분석 완료” 같은 내부 문구가 사용자에게 보임 | 사용자-facing 문구와 내부 로그 분리 |
+
+평가의 핵심은 모델이 멋진 답변을 했는지가 아니라, 은행 담당자가 검토 가능한 접수 패키지가 만들어졌는지입니다.
+
+---
+
+## 7. Key Design Decisions
+
+### 왜 Recover24는 112 신고를 대체하지 않는가?
+
+보이스피싱 피해는 긴급 지급정지, 경찰 신고, 은행 조사, 통신사 신고, 명의도용 대응이 함께 필요한 고위험 사건입니다.
+
+Recover24가 모든 판단을 자동으로 대신하면 잘못된 안내가 피해자의 대응을 늦출 수 있습니다. 따라서 Recover24는 공식 신고를 대체하지 않고, 은행 앱이나 웹에서 피해자가 사건을 먼저 정리하는 사전 접수·문서화 레이어로 정의했습니다.
+
+### 왜 LLM을 최종 판단자가 아니라 extraction 계층에만 제한했는가?
+
+LLM은 피해자의 긴 자연어 진술에서 사건 후보를 뽑는 데 유용합니다. 하지만 피해구제 가능성, 지급정지 가능 여부, 책임 판단 같은 민감한 판단을 LLM이 직접 단정하면 위험합니다.
+
+그래서 LLM은 최초 사실 추출에 사용하고, 누락 질문·문서 준비도·증빙 체크리스트·다음 행동은 구조화된 case와 규칙 기반 로직으로 계산했습니다.
+
+### 왜 `RecoveryCaseV1`을 유일한 사건 상태로 두었는가?
+
+초기 구조처럼 후속 답변마다 사건 전체를 다시 생성하면, 한 필드를 고쳤는데 다른 필드가 사라지는 문제가 생길 수 있습니다.
+
+따라서 `RecoveryCaseV1`을 단일 진실 공급원으로 두고, 후속 답변은 대상 필드만 patch하도록 설계했습니다.
+
+### 왜 질문에 `question_id`와 `handler_id`를 넣었는가?
+
+질문 문구는 사용자 경험을 위해 바뀔 수 있습니다. 문구에 포함된 단어로 질문 종류를 추측하면, 문장이 조금만 바뀌어도 답변 처리와 평가가 흔들립니다.
+
+그래서 질문마다 고유한 `question_id`, `field_path`, `handler_id`, `category`를 두었습니다.
+
+### 왜 문서 출력 전에 `DocumentViewModel`을 만들었는가?
+
+HTML renderer나 PDF mapper가 사건을 직접 읽고 다시 추론하면, 문서 출력 단계에서 사건 의미가 바뀔 수 있습니다.
+
+따라서 문서에 필요한 표시값을 `DocumentViewModel`에 먼저 고정하고, HTML·PDF·Reviewer Console이 같은 ViewModel을 사용하도록 설계했습니다.
+
+### 왜 평가기를 제품 코드 밖으로 분리했는가?
+
+평가기와 제품 로직이 강하게 얽히면, 제품 출력이 바뀔 때 평가도 같이 흔들립니다. 특히 질문 문구를 평가기가 해석하면 사용자 경험 개선이 평가 회귀로 이어질 수 있습니다.
+
+그래서 evaluation 계층은 제품의 공개 계약인 case, question_id, category, document view를 기준으로 평가하도록 분리했습니다.
+
+---
+
+## 8. Development Notes
+
+이 프로젝트는 처음에는 “피해자 진술을 받아 서류를 만들어주는 챗봇”처럼 보였습니다.
+
+하지만 개발하면서 핵심 문제는 챗봇 답변 생성이 아니라, **민감한 금융 피해 사건을 안전하게 구조화하고, 누락 없이 접수 가능한 상태로 만드는 것**이라는 점이 분명해졌습니다.
+
+첫 번째 전환점은 질문 설계였습니다. 초기에는 송금형 피해를 중심으로 질문이 고정되는 문제가 있었습니다. 하지만 실제 보이스피싱에는 악성앱, 명의도용, 카드론, 휴대폰 개통, 계좌 개설, 현금 전달, 대출사기 등 여러 흐름이 섞입니다. 그래서 사건 유형과 누락 필드에 따라 다음 질문을 동적으로 생성하도록 방향을 바꿨습니다.
+
+두 번째 전환점은 후속 답변 반영 방식이었습니다. 전체 case를 다시 생성하는 방식은 구현은 쉬웠지만, 이미 입력된 증빙 상태나 동의 값이 손상될 위험이 있었습니다. 그래서 질문의 `handler_id`를 기준으로 특정 필드만 patch하는 구조로 바꿨습니다.
+
+세 번째 전환점은 문서 출력이었습니다. 단순히 HTML을 예쁘게 만드는 것이 아니라, 모든 문서가 같은 사건 상태와 같은 표시 모델을 사용해야 했습니다. 그래서 `DocumentViewModel`을 단일화했습니다.
+
+네 번째 전환점은 평가 방식이었습니다. LLM 답변이 자연스럽게 보이는 것보다, 핵심 사실이 빠지지 않고, 금지 질문을 하지 않으며, 문서 제출 준비도가 개선되는지가 더 중요했습니다. 그래서 평가 기준을 챗봇 품질이 아니라 접수 업무 완성도로 바꿨습니다.
+
+결과적으로 Recover24는 “피해자 상담 챗봇”에서 **은행 백오피스 검토까지 연결되는 피해 접수 워크플로우 엔진**으로 정리되었습니다.
+
+---
+
+## 9. Limitations
+
+Recover24는 포트폴리오용 프로토타입이며, 실제 은행 운영 시스템으로 사용하기에는 여러 한계가 있습니다.
+
+첫째, 공식 은행·경찰·피해구제 서식 좌표 매핑은 완전하지 않습니다. 현재 문서는 제출 보조용 예시 양식이며, 실제 제출 전에는 각 기관의 최신 양식과 안내를 확인해야 합니다.
+
+둘째, 고객 본인확인과 실제 인증 연동은 구현되어 있지 않습니다. 실제 서비스에서는 본인확인, 계좌 인증, 휴대폰 인증, 대리 신청 권한 확인이 필요합니다.
+
+셋째, 테넌트/권한/증빙 업로드는 모델 또는 메타데이터 단계입니다. 실제 운영에서는 DB, 오브젝트 스토리지, 악성코드 검사, 접근권한, 보존기간 정책이 필요합니다.
+
+넷째, 개인정보와 민감 금융정보를 다루기 때문에 저장 암호화, 마스킹, 접근 로그, 보존 기간, 삭제 정책이 필수입니다.
+
+다섯째, 실제 은행 내부 시스템, 경찰 신고 시스템, 통신사 명의도용 신고 시스템과 연동되어 있지 않습니다.
+
+여섯째, LLM 추출 결과는 항상 검증이 필요합니다. Recover24는 자동 판단 시스템이 아니라, 담당자 검토를 전제로 하는 접수 보조 시스템입니다.
+
+일곱째, 평가 골든셋은 실제 운영 전체 분포를 대표하지 않습니다. 더 다양한 피해 유형, 최신 수법, 지역별·연령별 사례, 실제 상담 로그 기반 검증이 필요합니다.
+
+---
+
+## 10. How to Run
+
+### Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Create environment variables if using DeepSeek:
+### Set environment variables
 
-```bash
-DEEPSEEK_API_KEY=
-DEEPSEEK_MODEL=deepseek-chat
-DEEPSEEK_TEMPERATURE=0.1
-DEEPSEEK_MAX_TOKENS=1024
+Gemini를 사용할 경우:
+
+```powershell
+$env:GEMINI_API_KEY="your-api-key"
+$env:RECOVER24_LLM_MODEL="gemini-3.1-flash-lite-preview"
 ```
 
-Do not commit real API keys.
+Gemma Colab provider를 사용할 경우:
 
----
-
-## Run Tests
-
-```bash
-python -m pytest -q
+```powershell
+$env:RECOVER24_LLM_PROVIDER="gemma_colab"
+$env:RECOVER24_GEMMA_COLAB_URL="https://your-tunnel-url.trycloudflare.com"
 ```
 
-Expected result:
+로컬 테스트에서는 mock provider를 사용해 API 호출 없이 동작시킬 수 있습니다.
+
+### Run tests
+
+Windows 임시 폴더 권한 문제가 있을 수 있어 `--basetemp` 사용을 권장합니다.
+
+```powershell
+python -m pytest tests -q -p no:cacheprovider --basetemp .pytest_tmp_local
+```
+
+### Run API
+
+```powershell
+uvicorn recover24.api_v1:create_app --factory --reload
+```
+
+최소 API 엔드포인트는 다음과 같습니다.
 
 ```text
-74 passed
+GET  /health
+POST /v1/cases/analyze
+POST /v1/submissions
+```
+
+### Run a sample case
+
+```powershell
+PYTHONPATH=$PWD:$PYTHONPATH python application/run_recover24_case.py --input examples/sample_statement.txt --output-dir outputs/sample_case
+```
+
+### Run evaluation
+
+```powershell
+python scripts/run_conversation_gold_eval.py --engine llm --max-cases 5 --out outputs/eval_sample
 ```
 
 ---
 
-## Run All Evaluations
+## 11. Project Structure
 
-```bash
-python -m evaluation.run_all
+```text
+recover24/
+├── README.md
+├── requirements.txt
+├── application/
+│   └── run_recover24_case.py
+├── recover24/
+│   ├── models.py
+│   ├── catalogs.py
+│   ├── extraction.py
+│   ├── case_rules.py
+│   ├── api_v1.py
+│   ├── privacy_v1.py
+│   ├── audit_log_v1.py
+│   ├── evidence_upload_v1.py
+│   ├── reviewer_console_v1.py
+│   ├── submission_queue_v1.py
+│   ├── tenant_v1.py
+│   ├── intake/
+│   │   ├── questions.py
+│   │   ├── answer_router.py
+│   │   └── answer_handlers.py
+│   ├── documents/
+│   │   ├── view_model.py
+│   │   ├── narrative.py
+│   │   └── html_renderer.py
+│   └── providers/
+│       ├── base.py
+│       ├── gemini.py
+│       ├── gemma_colab.py
+│       └── deepseek.py
+├── evaluation/
+│   ├── dataset.py
+│   ├── simulator.py
+│   ├── scoring.py
+│   └── reporting.py
+├── tests/
+├── outputs/
+│   ├── cases/
+│   ├── documents/
+│   └── evaluation/
+└── docs/
+    └── architecture/
 ```
+
+실제 저장소 구조가 다르면 현재 폴더명과 파일명에 맞게 수정하면 됩니다. 중요한 것은 README에서 핵심 흐름, 실행 명령, 평가 기준, 한계를 명확히 보여주는 것입니다.
 
 ---
 
-## Run Individual Evaluation Tracks
+## 12. What This Project Demonstrates
 
-### A. Normalization
+이 프로젝트는 LLM을 민감한 금융 피해 접수 업무에 적용할 때 필요한 엔지니어링 설계를 보여줍니다.
 
-```bash
-python -m evaluation.normalization.runner
-```
+첫째, 피해자의 자연어 진술을 구조화된 사건 JSON으로 변환하는 information extraction 흐름을 설계했습니다.
 
-### B. Narrative Judge
+둘째, LLM 추출과 규칙 기반 누락 필드 계산, 문서 준비도 판단, 사람 검토를 분리했습니다.
 
-Checklist mode:
+셋째, `RecoveryCaseV1`을 단일 사건 상태로 두고, 후속 답변은 대상 필드만 patch하도록 설계했습니다.
 
-```bash
-python -m evaluation.narrative.runner --judge checklist
-```
+넷째, 질문에 `question_id`, `handler_id`, `category`, `field_path`를 부여해 질문 문구와 처리 로직을 분리했습니다.
 
-DeepSeek LLM judge mode:
+다섯째, 문서 출력은 `DocumentViewModel`을 통해 통일하고, renderer가 사건을 다시 추론하지 않도록 했습니다.
 
-```bash
-python -m evaluation.narrative.runner --judge llm --provider deepseek --timeout 240
-```
+여섯째, 피해구제·경찰 신고·은행 상담에 필요한 정보를 문서 패키지와 reviewer console view로 정리했습니다.
 
-### C. Consistency Extractor
+일곱째, 평가 기준을 일반 챗봇 품질이 아니라 필수 사실 추출, 누락 질문, 문서 완성도, 금지 질문 회피, 감사 가능성으로 정의했습니다.
 
-Rule extractor mode:
+마지막으로, 자동 판단이 아니라 사람 검토를 전제로 한 안전한 금융 피해 접수 워크플로우로 설계했습니다.
 
-```bash
-python -m evaluation.consistency.runner --extractor rule
-```
-
-DeepSeek LLM extractor mode:
-
-```bash
-python -m evaluation.consistency.runner --extractor llm --provider deepseek --timeout 240
-```
-
----
-
-## Safety Principle
-
-Recover24 V3 follows a hybrid LLM + deterministic safety architecture.
-
-The LLM is used for:
-
-* Extracting facts from natural language statements
-* Judging whether generated narratives preserve required information
-* Identifying missing, unsupported, or contradictory narrative elements
-
-Deterministic code is used for:
-
-* Canonical normalization
-* Field-level comparison
-* Conflict detection
-* Blocking unsafe document generation
-* Human review routing
-
-This design avoids relying on the LLM for final safety-critical decisions.
-
----
-
-## Current Limitations
-
-This is an MVP evaluation workflow, not a production fraud recovery system.
-
-Current limitations:
-
-* The evaluation dataset is small and gold-case-derived.
-* The narrative track evaluates generated text but does not yet run a full end-to-end document generator benchmark.
-* Real-world deployment would require more diverse fraud scenarios, document templates, audit logging, privacy controls, and human approval workflows.
-
----
-
-## Next Steps
-
-Potential future improvements:
-
-* Expand the dataset beyond the MVP 20-case tracks.
-* Add more fraud incident types.
-* Add full end-to-end document generation evaluation.
-* Add stronger audit logs for each LLM extraction and judgment.
-* Add a reviewer UI for blocked or conflicting cases.
-* Compare multiple LLM providers on extraction and judging quality.
+이 프로젝트의 핵심은 단순히 LLM 챗봇을 만든 것이 아니라, **보이스피싱 피해자의 비정형 진술을 은행 담당자가 검토 가능한 사건 패키지로 바꾸는 안전한 LLM workflow를 설계한 것**입니다.
