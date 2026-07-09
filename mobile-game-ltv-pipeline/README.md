@@ -2,7 +2,7 @@
 
 모바일 게임의 D0-D7 이벤트 로그를 사용해 D8-D180 LTV를 예측하고, 예측 결과를 단순 점수 제출이 아니라 **UA 예산 판단, 고가치 유저 우선순위, 모델 검증 리포트**까지 연결한 production-style ML pipeline입니다.
 
-이 프로젝트의 핵심은 “XGBoost로 LTV를 예측했다”가 아닙니다. 원본 데이터가 event log 형태이고, `user_id`만으로는 안정적인 모델링 단위가 되지 않는다는 점을 먼저 진단한 뒤, **모델링 grain 정의 → feature build → time-based validation → two-stage modeling → Optuna tuning → business report → 재현 가능한 Make pipeline**까지 구성한 점이 핵심입니다.
+원본 데이터가 event log 형태이고, `user_id`만으로는 안정적인 모델링 단위가 되지 않는다는 점을 먼저 진단한 뒤, **모델링 grain 정의 → feature build → time-based validation → two-stage modeling → Optuna tuning → business report 로 구성했습니다.
 
 ---
 
