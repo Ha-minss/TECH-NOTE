@@ -20,10 +20,11 @@ class GoldenCase:
     required_tool_names: list[str] = field(default_factory=list)
     forbidden_actions: list[str] = field(default_factory=list)
     notes: str = ""
+    script_key: str | None = None
 
 
 def default_dataset_path() -> Path:
-    return Path(__file__).resolve().parents[3] / "data" / "golden" / "offline_payment_ops_cases.json"
+    return Path(__file__).resolve().parents[3] / "data" / "golden" / "offline_payment_ops_cases_50.json"
 
 
 def load_golden_cases(path: Path | str | None = None) -> list[GoldenCase]:

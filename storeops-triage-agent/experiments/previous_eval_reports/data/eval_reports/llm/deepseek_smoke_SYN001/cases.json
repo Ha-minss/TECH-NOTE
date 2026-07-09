@@ -1,0 +1,261 @@
+[
+  {
+    "case_id": "GOLD-SYN-001",
+    "fixture_key": "SYN-001",
+    "merchant_message": "새 단말기 설치 후 기존 단말기에서 카드 승인이 계속 실패합니다.",
+    "expected_state": "READY_FOR_REVIEW",
+    "actual_state": "READY_FOR_REVIEW",
+    "expected_primary_cause": "duplicate_tid",
+    "actual_primary_cause": "duplicate_tid",
+    "required_tool_names": [
+      "get_terminals",
+      "get_tid_config",
+      "get_activation_history",
+      "get_recent_approval_errors"
+    ],
+    "actual_tool_names": [
+      "get_terminals",
+      "get_tid_config",
+      "get_tid_history",
+      "get_activation_history",
+      "get_recent_approval_errors",
+      "get_installation_history",
+      "get_terminal_identity"
+    ],
+    "missing_required_tools": [],
+    "forbidden_actions_triggered": [],
+    "clarification_questions": [],
+    "merchant_response": "확인된 시스템 근거를 바탕으로 담당자가 검토 결과를 안내드리겠습니다.",
+    "llm_traces": [
+      {
+        "prompt_name": "case_parser",
+        "model_name": "live-eval",
+        "status": "success",
+        "latency_ms": 1633,
+        "used_fallback": false,
+        "error_message": null
+      },
+      {
+        "prompt_name": "checklist_extractor",
+        "model_name": "live-eval",
+        "status": "success",
+        "latency_ms": 19752,
+        "used_fallback": false,
+        "error_message": null
+      },
+      {
+        "prompt_name": "merchant_response",
+        "model_name": "live-eval",
+        "status": "fallback",
+        "latency_ms": 2510,
+        "used_fallback": true,
+        "error_message": "5 validation errors for MerchantResponseDraftSchema\nmerchant_response\n  Field required [type=missing, input_value={'response': '안녕하...시기 바랍니다.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nmentions_uncertainty\n  Field required [type=missing, input_value={'response': '안녕하...시기 바랍니다.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ncontains_unconfirmed_claim\n  Field required [type=missing, input_value={'response': '안녕하...시기 바랍니다.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nconfidence\n  Field required [type=missing, input_value={'response': '안녕하...시기 바랍니다.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nresponse\n  Extra inputs are not permitted [type=extra_forbidden, input_value='안녕하세요, 고객...주시기 바랍니다.', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden"
+      }
+    ],
+    "policy_check_trace": [
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "운영 시스템에 등록된 해당 매장의 전체 단말기 목록을 확인하십시오.",
+        "matched_data_need": "terminal_inventory",
+        "priority": "required",
+        "reason": "신규 단말기 설치 후 기존 단말기 승인 실패 시, 매장의 전체 단말기 현황을 파악해야 합니다.",
+        "source_quote": "운영 시스템에 등록된 해당 매장의 전체 단말기 목록",
+        "source": "checklist_extractor",
+        "tool_name": "get_terminals"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "단말기별 결제 식별 설정값을 확인하십시오.",
+        "matched_data_need": "payment_identifier_config",
+        "priority": "required",
+        "reason": "결제 식별 설정 중복이 기존 단말기 승인 실패의 원인일 수 있습니다.",
+        "source_quote": "단말기별 결제 식별 설정값",
+        "source": "checklist_extractor",
+        "tool_name": "get_tid_config"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "신규 단말기의 개시 또는 활성화 처리 시각을 확인하십시오.",
+        "matched_data_need": "activation_timeline",
+        "priority": "required",
+        "reason": "신규 단말기 활성화 시점과 기존 단말기 오류 발생 시점의 순서를 비교해야 합니다.",
+        "source_quote": "신규 단말기의 개시 또는 활성화 처리 시각",
+        "source": "checklist_extractor",
+        "tool_name": "get_activation_history"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "기존 단말기에서 발생한 마지막 정상 결제 시각과 최초 오류 발생 시각을 확인하십시오.",
+        "matched_data_need": "approval_failure_history",
+        "priority": "required",
+        "reason": "오류 발생 시점을 파악하여 활성화 시점과의 인과관계를 분석해야 합니다.",
+        "source_quote": "기존 단말기에서 발생한 마지막 정상 결제 시각과 최초 오류 발생 시각",
+        "source": "checklist_extractor",
+        "tool_name": "get_recent_approval_errors"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "최근 기기 교체, 설치 대행 방문, 설정 변경 이력을 확인하십시오.",
+        "matched_data_need": "installation_history",
+        "priority": "required",
+        "reason": "최근 변경 이력이 오류 원인과 관련될 수 있습니다.",
+        "source_quote": "최근 기기 교체, 설치 대행 방문, 설정 변경 이력",
+        "source": "checklist_extractor",
+        "tool_name": "get_installation_history"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "등록 시스템에 저장된 단말기 식별자와 현장 장비 식별자의 일치 여부를 확인하십시오.",
+        "matched_data_need": "terminal_identity_record",
+        "priority": "required",
+        "reason": "식별자 불일치는 승인 실패의 원인이 될 수 있습니다.",
+        "source_quote": "등록 시스템에 저장된 단말기 식별자와 현장 장비 식별자의 일치 여부",
+        "source": "checklist_extractor",
+        "tool_name": "get_terminal_identity"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "오류 발생 시각을 기준으로 한 최근 승인 실패 내역을 확인하십시오.",
+        "matched_data_need": "approval_failure_history",
+        "priority": "required",
+        "reason": "승인 실패 내역을 통해 오류 패턴을 분석해야 합니다.",
+        "source_quote": "오류 발생 시각을 기준으로 한 최근 승인 실패 내역",
+        "source": "checklist_extractor",
+        "tool_name": "get_recent_approval_errors"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "승인 응답 코드와 단말기 화면에 표시된 오류 문구를 확인하십시오.",
+        "matched_data_need": "approval_failure_history",
+        "priority": "required",
+        "reason": "응답 코드와 오류 문구는 원인 파악에 중요한 단서입니다.",
+        "source_quote": "승인 응답 코드와 단말기 화면에 표시된 오류 문구",
+        "source": "checklist_extractor",
+        "tool_name": "get_recent_approval_errors"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "동일 매장 내 다른 단말기 또는 다른 결제 경로에서도 실패가 발생하는지 확인하십시오.",
+        "matched_data_need": "terminal_inventory",
+        "priority": "required",
+        "reason": "장애 범위가 단일 단말기인지 매장 전체인지 파악해야 합니다.",
+        "source_quote": "동일 매장 내 다른 단말기 또는 다른 결제 경로에서도 실패가 발생하는지 여부",
+        "source": "checklist_extractor",
+        "tool_name": "get_terminals"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "최근 단말기 설치, 기기 교체, 가맹점 설정 변경 여부를 확인하십시오.",
+        "matched_data_need": "recent_change_summary",
+        "priority": "required",
+        "reason": "최근 변경 사항이 오류와 연관될 수 있습니다.",
+        "source_quote": "최근 단말기 설치, 기기 교체, 가맹점 설정 변경 여부",
+        "source": "checklist_extractor",
+        "tool_name": "get_installation_history"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "현장에 있는 기존 단말기와 신규 단말기의 논리적·물리적 구분을 확인하십시오.",
+        "matched_data_need": null,
+        "priority": "supporting",
+        "reason": "단말기 구분이 명확하지 않으면 추가 정보가 필요합니다.",
+        "source_quote": "현장에 있는 기존 단말기와 신규 단말기의 논리적·물리적 구분",
+        "source": "unmatched_policy_check",
+        "tool_name": null
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "단말기 번호, 시리얼 번호, 기기 고유 번호 등 물리 식별자를 확인하십시오.",
+        "matched_data_need": "terminal_identity_record",
+        "priority": "supporting",
+        "reason": "물리 식별자와 등록 정보의 일치 여부를 확인해야 합니다.",
+        "source_quote": "단말기 번호, 시리얼 번호, 기기 고유 번호 등 물리 식별자",
+        "source": "checklist_extractor",
+        "tool_name": "get_terminal_identity"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "현재 시점의 설정값만 확인하지 말고, 문제가 발생한 시점의 설정값과 변경 이력을 함께 확인하십시오.",
+        "matched_data_need": "historical_identifier_config",
+        "priority": "required",
+        "reason": "과거 설정값이 현재와 다를 수 있으므로 시간축 검토가 필요합니다.",
+        "source_quote": "현재 시점의 설정값만 확인하지 말고, 문제가 발생한 시점의 설정값과 변경 이력을 함께 확인합니다.",
+        "source": "checklist_extractor",
+        "tool_name": "get_tid_config"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "신규 단말기 활성화 이후 기존 단말기 오류가 시작되었다면, 활성화 시점과 오류 발생 시점의 순서를 반드시 비교하십시오.",
+        "matched_data_need": "activation_timeline",
+        "priority": "required",
+        "reason": "인과관계를 확인하기 위해 시점 비교가 필수적입니다.",
+        "source_quote": "신규 단말기 활성화 이후 기존 단말기 오류가 시작되었다면, 활성화 시점과 오류 발생 시점의 순서를 반드시 비교합니다.",
+        "source": "checklist_extractor",
+        "tool_name": "get_activation_history"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-002",
+        "policy_title": "[운영표준] 신규 단말기 설치 및 식별 정보 검증 지침",
+        "check_text": "특정 단말기에서만 오류가 발생하는지, 매장 전체 결제 경로에서 오류가 발생하는지 구분하십시오.",
+        "matched_data_need": null,
+        "priority": "supporting",
+        "reason": "장애 범위를 정확히 파악해야 적절한 조치가 가능합니다.",
+        "source_quote": "특정 단말기에서만 오류가 발생하는지, 매장 전체 결제 경로에서 오류가 발생하는지 구분합니다.",
+        "source": "unmatched_policy_check",
+        "tool_name": null
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "오류가 발생한 정확한 시각 또는 발생 시간대를 확인하십시오.",
+        "matched_data_need": "approval_failure_history",
+        "priority": "required",
+        "reason": "오류 시각은 다른 데이터와 대조하기 위한 기본 정보입니다.",
+        "source_quote": "오류가 발생한 정확한 시각 또는 발생 시간대",
+        "source": "checklist_extractor",
+        "tool_name": "get_recent_approval_errors"
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "영향을 받은 결제 수단과 특정 카드사 또는 결제 수단에 국한되는지 여부를 확인하십시오.",
+        "matched_data_need": null,
+        "priority": "supporting",
+        "reason": "특정 결제 수단에 국한된 문제인지 파악해야 합니다.",
+        "source_quote": "영향을 받은 결제 수단과 특정 카드사 또는 결제 수단에 국한되는지 여부",
+        "source": "unmatched_policy_check",
+        "tool_name": null
+      },
+      {
+        "policy_id": "SOP-PAY-OP-001",
+        "policy_title": "[운영표준] 오프라인 결제 승인 오류 초기 대응 지침",
+        "check_text": "오류가 발생한 단말기 또는 결제 경로를 확인하십시오.",
+        "matched_data_need": "terminal_inventory",
+        "priority": "required",
+        "reason": "오류 발생 단말기를 특정해야 합니다.",
+        "source_quote": "오류가 발생한 단말기 또는 결제 경로",
+        "source": "checklist_extractor",
+        "tool_name": "get_terminals"
+      }
+    ],
+    "used_fallback": true,
+    "passed": true,
+    "failure_reasons": [],
+    "has_evidence_citations": true,
+    "unsupported_claim_count": 0
+  }
+]

@@ -1,4 +1,4 @@
-"""SQLite schema and deterministic offline payment fixtures."""
+﻿"""SQLite schema and deterministic offline payment fixtures."""
 
 from __future__ import annotations
 
@@ -99,6 +99,13 @@ def create_database(path: str | Path = ':memory:') -> sqlite3.Connection:
     return connection
 
 
+def open_database(path: str | Path) -> sqlite3.Connection:
+    """Open an existing SQLite fixture database with row access enabled."""
+    connection = sqlite3.connect(str(path))
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
+
 def seed_s1(connection: sqlite3.Connection) -> None:
     connection.executemany('INSERT INTO stores VALUES (?, ?, ?, ?)', [
         ('STR-S1', 'Synthetic Cafe S1', 'Asia/Seoul', 'active'),
@@ -127,5 +134,6 @@ def seed_s1(connection: sqlite3.Connection) -> None:
     connection.commit()
 
 
-__all__ = ['SCHEMA', 'create_database', 'seed_s1']
+__all__ = ['SCHEMA', 'create_database', 'open_database', 'seed_s1']
+
 

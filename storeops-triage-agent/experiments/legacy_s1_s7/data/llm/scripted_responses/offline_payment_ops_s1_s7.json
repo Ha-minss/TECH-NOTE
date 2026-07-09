@@ -1,0 +1,747 @@
+{
+  "S1": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure"
+      ],
+      "context_flags": [
+        "new_terminal_recently_installed",
+        "duplicate_tid_possible"
+      ],
+      "missing_fields": [],
+      "confidence": 0.94,
+      "reasoning_summary": "New terminal installation plus existing terminal approval failures requires TID evidence."
+    },
+    "planner": {
+      "case_type": "terminal_installation_payment_failure",
+      "selected_data_needs": [
+        {
+          "name": "terminal_inventory",
+          "priority": "required",
+          "reason": "Separate old and newly installed terminals."
+        },
+        {
+          "name": "payment_identifier_config",
+          "priority": "required",
+          "reason": "Check whether TID is duplicated."
+        },
+        {
+          "name": "historical_identifier_config",
+          "priority": "supporting",
+          "reason": "Compare current and historical TID assignment."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Confirm recent approval failure records."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.93
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "We found evidence that the payment identifier assignment needs operator review. We will route this with the supporting records instead of changing settings automatically.",
+      "mentions_uncertainty": false,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.95
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking terminal_inventory.",
+          "matched_data_need": "terminal_inventory",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_inventory; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_inventory"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking payment_identifier_config.",
+          "matched_data_need": "payment_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need payment_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: payment_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking historical_identifier_config.",
+          "matched_data_need": "historical_identifier_config",
+          "priority": "supporting",
+          "reason": "The retrieved SOP check maps to allowed data_need historical_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: historical_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S2": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure",
+        "identity_mismatch"
+      ],
+      "context_flags": [
+        "terminal_identifier_mismatch"
+      ],
+      "missing_fields": [],
+      "confidence": 0.93,
+      "reasoning_summary": "The message points to physical terminal identity versus registered identity mismatch."
+    },
+    "planner": {
+      "case_type": "terminal_identity_check",
+      "selected_data_needs": [
+        {
+          "name": "terminal_inventory",
+          "priority": "required",
+          "reason": "Identify affected terminals."
+        },
+        {
+          "name": "terminal_identity_record",
+          "priority": "required",
+          "reason": "Compare physical and registered terminal identity."
+        },
+        {
+          "name": "payment_identifier_config",
+          "priority": "required",
+          "reason": "Check payment identifier assignment."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Confirm approval errors."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.92
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "The records show a terminal identity mismatch that needs operator review with the registered device evidence. We will not change configuration automatically.",
+      "mentions_uncertainty": false,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.94
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal identity checks",
+          "check_text": "SOP requires checking terminal_inventory.",
+          "matched_data_need": "terminal_inventory",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_inventory; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_inventory"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal identity checks",
+          "check_text": "SOP requires checking terminal_identity_record.",
+          "matched_data_need": "terminal_identity_record",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_identity_record; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_identity_record"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal identity checks",
+          "check_text": "SOP requires checking payment_identifier_config.",
+          "matched_data_need": "payment_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need payment_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: payment_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal identity checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S3": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure",
+        "registration_missing"
+      ],
+      "context_flags": [
+        "van_registration_missing"
+      ],
+      "missing_fields": [],
+      "confidence": 0.92,
+      "reasoning_summary": "The complaint mentions missing VAN merchant registration."
+    },
+    "planner": {
+      "case_type": "merchant_registration_check",
+      "selected_data_needs": [
+        {
+          "name": "merchant_registration_status",
+          "priority": "required",
+          "reason": "Check VAN merchant registration state."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Confirm approval failure history."
+        },
+        {
+          "name": "payment_identifier_config",
+          "priority": "required",
+          "reason": "Check TID assignment."
+        },
+        {
+          "name": "terminal_identity_record",
+          "priority": "supporting",
+          "reason": "Confirm terminal identity context."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.92
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "The records indicate the VAN merchant registration is incomplete and needs review by the responsible team. We will use the evidence package for handoff.",
+      "mentions_uncertainty": false,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.94
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-003",
+          "policy_title": "Merchant and VAN registration checks",
+          "check_text": "SOP requires checking merchant_registration_status.",
+          "matched_data_need": "merchant_registration_status",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need merchant_registration_status; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: merchant_registration_status"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-003",
+          "policy_title": "Merchant and VAN registration checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-003",
+          "policy_title": "Merchant and VAN registration checks",
+          "check_text": "SOP requires checking payment_identifier_config.",
+          "matched_data_need": "payment_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need payment_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: payment_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-003",
+          "policy_title": "Merchant and VAN registration checks",
+          "check_text": "SOP requires checking terminal_identity_record.",
+          "matched_data_need": "terminal_identity_record",
+          "priority": "supporting",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_identity_record; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_identity_record"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S4": {
+    "case_parser": {
+      "issue_family": "pos_front_connection_issue",
+      "symptoms": [
+        "request_delivery_failure"
+      ],
+      "context_flags": [
+        "pos_front_connection_issue"
+      ],
+      "missing_fields": [],
+      "confidence": 0.94,
+      "reasoning_summary": "The POS cannot deliver payment requests to the front terminal."
+    },
+    "planner": {
+      "case_type": "pos_front_connection_issue",
+      "selected_data_needs": [
+        {
+          "name": "pos_front_connection_history",
+          "priority": "required",
+          "reason": "Check POS/front connection status."
+        },
+        {
+          "name": "request_delivery_history",
+          "priority": "required",
+          "reason": "Check request delivery failures."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.93
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "The POS/front connection records show request delivery failures that need support review. No payment or setting changes will be performed by the triage agent.",
+      "mentions_uncertainty": false,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.95
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-004",
+          "policy_title": "POS front connection checks",
+          "check_text": "SOP requires checking pos_front_connection_history.",
+          "matched_data_need": "pos_front_connection_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need pos_front_connection_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: pos_front_connection_history"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-004",
+          "policy_title": "POS front connection checks",
+          "check_text": "SOP requires checking request_delivery_history.",
+          "matched_data_need": "request_delivery_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need request_delivery_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: request_delivery_history"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S5": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure"
+      ],
+      "context_flags": [
+        "ambiguous_payment_failure"
+      ],
+      "missing_fields": [
+        "failed_physical_terminal",
+        "visible_error_message"
+      ],
+      "confidence": 0.91,
+      "reasoning_summary": "The complaint lacks merchant-observable details needed to identify the failing terminal and error."
+    },
+    "planner": {
+      "case_type": "ambiguous_payment_failure",
+      "selected_data_needs": [
+        {
+          "name": "terminal_inventory",
+          "priority": "required",
+          "reason": "List candidate terminals."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Check recorded approval errors."
+        },
+        {
+          "name": "recent_change_summary",
+          "priority": "supporting",
+          "reason": "Check recent installation changes."
+        }
+      ],
+      "clarification_candidates": [
+        "failed_physical_terminal",
+        "visible_error_message"
+      ],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.91
+    },
+    "clarification": {
+      "questions": [
+        {
+          "field": "failed_physical_terminal",
+          "question": "Which physical terminal showed the failure?",
+          "why_needed": "The records need to be compared against the terminal that failed."
+        },
+        {
+          "field": "visible_error_message",
+          "question": "What error message was visible on the terminal screen?",
+          "why_needed": "The visible message helps distinguish the failure type."
+        }
+      ],
+      "confidence": 0.94
+    },
+    "merchant_response": {
+      "merchant_response": "We cannot confirm the cause from the available records yet. Please tell us which terminal failed and what message appeared on its screen.",
+      "mentions_uncertainty": true,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.96
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-005",
+          "policy_title": "Uncertainty and clarification checks",
+          "check_text": "SOP requires checking terminal_inventory.",
+          "matched_data_need": "terminal_inventory",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_inventory; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_inventory"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-005",
+          "policy_title": "Uncertainty and clarification checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-005",
+          "policy_title": "Uncertainty and clarification checks",
+          "check_text": "SOP requires checking recent_change_summary.",
+          "matched_data_need": "recent_change_summary",
+          "priority": "supporting",
+          "reason": "The retrieved SOP check maps to allowed data_need recent_change_summary; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: recent_change_summary"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S6A": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure"
+      ],
+      "context_flags": [
+        "new_terminal_recently_installed",
+        "required_tool_failure_risk"
+      ],
+      "missing_fields": [],
+      "confidence": 0.92,
+      "reasoning_summary": "The case needs TID evidence, and required lookup may fail."
+    },
+    "planner": {
+      "case_type": "terminal_installation_payment_failure",
+      "selected_data_needs": [
+        {
+          "name": "terminal_inventory",
+          "priority": "required",
+          "reason": "Separate terminals."
+        },
+        {
+          "name": "payment_identifier_config",
+          "priority": "required",
+          "reason": "Required TID lookup."
+        },
+        {
+          "name": "historical_identifier_config",
+          "priority": "supporting",
+          "reason": "Compare historical TID assignment."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Confirm approval errors."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.92
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "We cannot confirm the cause because a required TID lookup failed. An operator will review the available records without changing payment or configuration state.",
+      "mentions_uncertainty": true,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.95
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking terminal_inventory.",
+          "matched_data_need": "terminal_inventory",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_inventory; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_inventory"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking payment_identifier_config.",
+          "matched_data_need": "payment_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need payment_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: payment_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking historical_identifier_config.",
+          "matched_data_need": "historical_identifier_config",
+          "priority": "supporting",
+          "reason": "The retrieved SOP check maps to allowed data_need historical_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: historical_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S6B": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure"
+      ],
+      "context_flags": [
+        "new_terminal_recently_installed",
+        "duplicate_tid_possible"
+      ],
+      "missing_fields": [],
+      "confidence": 0.93,
+      "reasoning_summary": "The evidence plan should still work if optional routing is unavailable."
+    },
+    "planner": {
+      "case_type": "terminal_installation_payment_failure",
+      "selected_data_needs": [
+        {
+          "name": "terminal_inventory",
+          "priority": "required",
+          "reason": "Separate terminals."
+        },
+        {
+          "name": "payment_identifier_config",
+          "priority": "required",
+          "reason": "Check duplicate TID."
+        },
+        {
+          "name": "historical_identifier_config",
+          "priority": "supporting",
+          "reason": "Compare historical assignment."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Confirm approval errors."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.93
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "The evidence indicates a duplicate payment identifier needs operator review. The missing route lookup does not cause the agent to change settings automatically.",
+      "mentions_uncertainty": false,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.95
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking terminal_inventory.",
+          "matched_data_need": "terminal_inventory",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_inventory; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_inventory"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking payment_identifier_config.",
+          "matched_data_need": "payment_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need payment_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: payment_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking historical_identifier_config.",
+          "matched_data_need": "historical_identifier_config",
+          "priority": "supporting",
+          "reason": "The retrieved SOP check maps to allowed data_need historical_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: historical_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Terminal installation checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        }
+      ],
+      "confidence": 0.94
+    }
+  },
+  "S7": {
+    "case_parser": {
+      "issue_family": "payment_approval_failure",
+      "symptoms": [
+        "approval_failure",
+        "temporal_conflict"
+      ],
+      "context_flags": [
+        "new_terminal_recently_installed",
+        "temporal_tid_conflict"
+      ],
+      "missing_fields": [],
+      "confidence": 0.92,
+      "reasoning_summary": "Current and incident-time TID records need comparison before any conclusion."
+    },
+    "planner": {
+      "case_type": "terminal_installation_payment_failure",
+      "selected_data_needs": [
+        {
+          "name": "terminal_inventory",
+          "priority": "required",
+          "reason": "Separate terminals."
+        },
+        {
+          "name": "payment_identifier_config",
+          "priority": "required",
+          "reason": "Check current TID assignment."
+        },
+        {
+          "name": "historical_identifier_config",
+          "priority": "required",
+          "reason": "Compare incident-time TID assignment."
+        },
+        {
+          "name": "approval_failure_history",
+          "priority": "required",
+          "reason": "Find incident time from approval errors."
+        }
+      ],
+      "clarification_candidates": [],
+      "forbidden_actions": [
+        "execute_payment",
+        "refund",
+        "config_mutation",
+        "force_reactivation"
+      ],
+      "confidence": 0.92
+    },
+    "clarification": null,
+    "merchant_response": {
+      "merchant_response": "We cannot confirm one final cause because current and incident-time identifier records conflict. An operator must review the historical evidence before any action.",
+      "mentions_uncertainty": true,
+      "contains_unconfirmed_claim": false,
+      "confidence": 0.95
+    },
+    "checklist_extractor": {
+      "policy_checks": [
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Temporal identifier conflict checks",
+          "check_text": "SOP requires checking terminal_inventory.",
+          "matched_data_need": "terminal_inventory",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need terminal_inventory; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: terminal_inventory"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Temporal identifier conflict checks",
+          "check_text": "SOP requires checking payment_identifier_config.",
+          "matched_data_need": "payment_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need payment_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: payment_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Temporal identifier conflict checks",
+          "check_text": "SOP requires checking historical_identifier_config.",
+          "matched_data_need": "historical_identifier_config",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need historical_identifier_config; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: historical_identifier_config"
+        },
+        {
+          "policy_id": "SOP-PAY-OP-002",
+          "policy_title": "Temporal identifier conflict checks",
+          "check_text": "SOP requires checking approval_failure_history.",
+          "matched_data_need": "approval_failure_history",
+          "priority": "required",
+          "reason": "The retrieved SOP check maps to allowed data_need approval_failure_history; the tool catalog provides this data through a read-only tool.",
+          "source_quote": "SOP check: approval_failure_history"
+        }
+      ],
+      "confidence": 0.94
+    }
+  }
+}

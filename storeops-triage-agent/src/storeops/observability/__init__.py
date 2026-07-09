@@ -1,7 +1,3 @@
-"""Observability utilities for StoreOps workflow evaluation."""
+﻿"""Observability helpers for evaluation metrics and traces."""
 
-from storeops.observability.metadata_gateway import MetadataScenarioGateway
-from storeops.observability.trace import TraceRecord, build_trace_record
-
-__all__ = ['MetadataScenarioGateway', 'TraceRecord', 'build_trace_record']
-
+__all__: list[str] = []

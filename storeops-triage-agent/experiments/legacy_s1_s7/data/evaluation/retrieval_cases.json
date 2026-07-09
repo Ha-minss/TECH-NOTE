@@ -1,0 +1,82 @@
+[
+  {
+    "case_id": "RET-001",
+    "query": "카드 결제가 계속 실패해요. 단말기에 승인 오류라고 떠요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-001"],
+    "expected_policy_ids": ["SOP-PAY-OP-001"],
+    "notes": "기본 카드 승인 실패 문의는 결제 승인 오류 초기 대응 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-002",
+    "query": "어제 새 단말기 설치했는데 기존 단말기에서 카드 승인이 안 돼요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-002"],
+    "expected_policy_ids": ["SOP-PAY-OP-002", "SOP-PAY-OP-001"],
+    "notes": "신규 단말기 설치 이후 기존 단말기 승인 실패는 단말기 설치/식별 문서를 포함해야 한다."
+  },
+  {
+    "case_id": "RET-003",
+    "query": "기기를 바꾼 뒤부터 승인 오류가 떠요. 단말기 번호가 맞는지 확인해달래요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-002"],
+    "expected_policy_ids": ["SOP-PAY-OP-002"],
+    "notes": "기기 교체와 단말기 번호 확인 문의는 단말기 식별 정보 검증 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-004",
+    "query": "가맹점 번호 미등록이라고 뜨면서 결제가 안 돼요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-003"],
+    "expected_policy_ids": ["SOP-PAY-OP-003", "SOP-PAY-OP-001"],
+    "notes": "가맹점 번호 미등록 문구는 가맹점/VAN 등록 상태 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-005",
+    "query": "POS에서 결제 눌러도 단말기로 금액이 안 넘어가요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-004"],
+    "expected_policy_ids": ["SOP-PAY-OP-004"],
+    "notes": "POS에서 단말기로 금액이 전달되지 않는 문의는 POS-단말기 연동 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-006",
+    "query": "결제가 안 돼요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-001"],
+    "expected_policy_ids": ["SOP-PAY-OP-001", "SOP-PAY-OP-005"],
+    "notes": "매우 애매한 결제 불가 문의는 최소한 결제 승인 오류 초기 대응 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-007",
+    "query": "오류가 뜨긴 했는데 문구는 기억이 안 나요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-005"],
+    "expected_policy_ids": ["SOP-PAY-OP-005", "SOP-PAY-OP-001"],
+    "notes": "화면 오류 문구가 없는 경우는 불확실성 및 추가 확인 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-008",
+    "query": "매장에 단말기가 여러 개인데 어떤 기기에서 안 되는지 잘 모르겠어요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-005"],
+    "expected_policy_ids": ["SOP-PAY-OP-005", "SOP-PAY-OP-002"],
+    "notes": "실패한 물리 단말기를 특정할 수 없는 문의는 불확실성 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-009",
+    "query": "현장에서는 결제가 안 된다고 하는데 시스템 기록은 정상처럼 보여요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-005"],
+    "expected_policy_ids": ["SOP-PAY-OP-005"],
+    "notes": "현장 설명과 시스템 기록이 충돌하는 경우는 판단 유보 및 담당자 검토 문서를 찾아야 한다."
+  },
+  {
+    "case_id": "RET-010",
+    "query": "단말기는 켜져 있는데 POS 결제가 계속 타임아웃돼요.",
+    "top_k": 3,
+    "required_policy_ids": ["SOP-PAY-OP-004"],
+    "expected_policy_ids": ["SOP-PAY-OP-004", "SOP-PAY-OP-005"],
+    "notes": "단말기 기본 상태는 정상처럼 보이나 POS 결제가 타임아웃되는 경우는 POS 연동 문서를 찾아야 한다."
+  }
+]
