@@ -1,6 +1,0 @@
-{
-    "api_key":  "LIVE_LLM_API_KEY",
-    "model_name":  "LIVE_LLM_MODEL",
-    "base_url":  "LIVE_LLM_BASE_URL",
-    "timeout_seconds":  30
-}
