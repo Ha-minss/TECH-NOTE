@@ -24,6 +24,8 @@ def default_output_dir() -> Path:
 def default_script_path() -> Path:
     return (
         Path(__file__).resolve().parents[3]
+        / "experiments"
+        / "legacy_s1_s7"
         / "data"
         / "llm"
         / "scripted_responses"
@@ -45,10 +47,11 @@ def build_scripted_client(
         "merchant_response": [],
     }
     for case in cases:
+        script_key = case.script_key or case.fixture_key
         try:
-            scenario_script = scenario_scripts[case.fixture_key]
+            scenario_script = scenario_scripts[script_key]
         except KeyError as exc:
-            raise KeyError(f"No scripted LLM responses for {case.fixture_key}") from exc
+            raise KeyError(f"No scripted LLM responses for {script_key}") from exc
         for prompt_name, queue in prompt_queues.items():
             response = scenario_script.get(prompt_name)
             if response is not None:
@@ -72,8 +75,10 @@ def run_llm_evaluation(
     provider: str = "scripted",
     config: str | None = None,
     fixture_key: str | None = None,
+    dataset_path: Path | str | None = None,
+    fixture_db_path: Path | str | None = None,
 ) -> LLMEvaluationRunReport:
-    cases = load_golden_cases()
+    cases = load_golden_cases(dataset_path)
     if fixture_key is not None:
         cases = [
             case
@@ -84,7 +89,11 @@ def run_llm_evaluation(
             raise ValueError(f"No golden cases matched fixture_key or case_id: {fixture_key}")
 
     client = build_client(provider, cases=cases, config=config)
-    evaluator = LLMEvaluator(client=client, model_name=f"{provider}-eval")
+    evaluator = LLMEvaluator(
+        client=client,
+        model_name=f"{provider}-eval",
+        fixture_db_path=fixture_db_path,
+    )
     case_results = [evaluator.evaluate_case(case) for case in cases]
     summary = write_llm_report(
         Path(output_dir) if output_dir is not None else default_output_dir(),
@@ -143,6 +152,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--provider", choices=["scripted", "live"], default="scripted")
     parser.add_argument("--config", help="Optional local provider config path.")
     parser.add_argument("--output-dir", help="Override eval report output directory.")
+    parser.add_argument("--dataset", help="Override golden dataset JSON path.")
+    parser.add_argument("--fixture-db", help="Open an existing SQLite fixture DB instead of seeded demo fixtures.")
     parser.add_argument(
         "--fixture-key",
         help="Run only matching fixture_key or case_id, for example S1 or GOLD-S1-001.",
@@ -153,6 +164,8 @@ def main(argv: list[str] | None = None) -> None:
         provider=args.provider,
         config=args.config,
         fixture_key=args.fixture_key,
+        dataset_path=args.dataset,
+        fixture_db_path=args.fixture_db,
     )
     print(json.dumps(report.summary, ensure_ascii=False, indent=2))
 

@@ -6,10 +6,7 @@ requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "pydantic>=2"]
 
 [project.optional-dependencies]
-retrieval = ["faiss-cpu>=1.8", "sentence-transformers>=3"]
-console = ["streamlit>=1.36"]
+retrieval = ["faiss-cpu>=1.8"]
 
 [tool.unittest]
 start-directory = "tests"
-
-

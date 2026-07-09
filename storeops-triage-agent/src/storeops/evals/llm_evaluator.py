@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any
 
-from storeops.apps.operator_cli import create_connection
 from storeops.domains.offline_payment_ops.workflow import OfflinePaymentWorkflow
 from storeops.evals.datasets import GoldenCase
+from storeops.evals.deterministic import default_fixture_db_path
+from storeops.infra.database import open_database
 from storeops.observability.metrics import ratio
 
 
@@ -54,22 +56,45 @@ class LLMEvalCaseResult:
 
 
 class LLMEvaluator:
-    def __init__(self, *, client, model_name: str = "scripted-llm-eval"):
+    def __init__(
+        self,
+        *,
+        client,
+        model_name: str = "scripted-llm-eval",
+        fixture_db_path: Path | str | None = None,
+    ):
         self.client = client
         self.model_name = model_name
+        self.fixture_db_path = Path(fixture_db_path) if fixture_db_path is not None else default_fixture_db_path()
+
+    def _connection(self):
+        return open_database(self.fixture_db_path)
+
+    @staticmethod
+    def _store_id_for(connection, fixture_key: str) -> str:
+        row = connection.execute(
+            "SELECT store_id FROM scenario_stores WHERE scenario_id = ?",
+            (fixture_key,),
+        ).fetchone()
+        if row is not None:
+            return str(row["store_id"])
+        return f"STR-{fixture_key}"
 
     def evaluate_case(self, case: GoldenCase) -> LLMEvalCaseResult:
-        connection = create_connection()
+        connection = self._connection()
         try:
             workflow = OfflinePaymentWorkflow.with_llm(
                 connection,
                 client=self.client,
                 model_name=self.model_name,
             )
-            result = workflow.run_scenario(
-                case.fixture_key,
+            result = workflow.run_case(
+                scenario_id=case.fixture_key,
+                store_id=self._store_id_for(connection, case.fixture_key),
+                merchant_message=case.merchant_message,
                 operator_id="OP-DEMO",
                 trace_id=f"TRACE-LLM-EVAL-{case.case_id}",
+                case_hint=case.notes,
             )
         finally:
             connection.close()
@@ -264,3 +289,5 @@ def build_llm_summary(case_results: list[LLMEvalCaseResult]) -> dict[str, Any]:
 
 
 __all__ = ["LLMEvalCaseResult", "LLMEvaluator", "build_llm_summary"]
+
+

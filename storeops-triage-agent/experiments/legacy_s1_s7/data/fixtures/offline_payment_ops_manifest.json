@@ -1,0 +1,32 @@
+{
+    "fixture_version":  "offline-payment-ops-v1",
+    "scenario_ids":  [
+                         "S1",
+                         "S2",
+                         "S3",
+                         "S4",
+                         "S5",
+                         "S6A",
+                         "S6B",
+                         "S7"
+                     ],
+    "sqlite_file":  "offline_payment_ops.sqlite3",
+    "table_counts":  {
+                         "activation_events":  4,
+                         "approval_events":  7,
+                         "installation_events":  2,
+                         "pos_front_connection_events":  1,
+                         "pos_front_links":  1,
+                         "scenario_stores":  8,
+                         "scenarios":  8,
+                         "store_operator_access":  8,
+                         "stores":  8,
+                         "support_routes":  4,
+                         "terminal_identities":  4,
+                         "terminals":  14,
+                         "tid_assignments":  15,
+                         "tool_failure_injections":  2,
+                         "van_registrations":  2
+                     },
+    "synthetic_only":  true
+}
