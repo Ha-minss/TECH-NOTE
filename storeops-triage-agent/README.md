@@ -428,43 +428,7 @@ SQLite fixture에 들어 있는 raw operational facts가 golden label의 원인�
 
 ---
 
-### 6.2 Deterministic Evaluation
-
-규칙 기반 parser, planner, reasoner, safety gate를 사용한 deterministic benchmark 결과는 다음과 같습니다.
-
-| 지표 | 결과 |
-|---|---:|
-| Total cases | 50 |
-| Passed cases | 38 |
-| State accuracy | 0.90 |
-| Cause accuracy | 0.98 |
-| Abstention safety accuracy | 1.00 |
-| Unsupported claim count | 0 |
-| Tool failure recovery rate | 1.00 |
-| Operator correction candidate count | 12 |
-
-이 결과에서 가장 중요한 값은 `unsupported_claim_count = 0`과 `abstention_safety_accuracy = 1.00`입니다.
-
-즉, 시스템은 아직 모든 케이스를 완벽히 통과하지는 못했지만, **근거 없이 원인을 단정하지 않도록 설계되어 있음**을 확인했습니다.
-
-`cause_accuracy = 0.98`은 원인 후보 판단이 대부분 맞았다는 뜻입니다. 하지만 `passed_cases = 38/50`이라는 결과는 아직 운영 수준의 완성 시스템이라기보다, 남은 failure mode를 분석하고 개선해야 하는 MVP라는 뜻입니다.
-
-대표 실패 양상은 다음과 같습니다.
-
-| 실패 양상 | 의미 | 개선 방향 |
-|---|---|---|
-| S5 모호 문의에서 required tool 누락 | 문의가 짧을 때 baseline evidence 계획이 부족 | clarification 전 최소 조회 정책 보강 |
-| S6A 필수 도구 실패 상태 차이 | 필수 tool failure와 clarification 우선순위 충돌 | safety transition 우선순위 조정 |
-| S6B 선택 도구 실패에서 과도한 degraded 처리 | 핵심 evidence는 있는데 선택 tool 실패가 상태를 흔듦 | required / supporting / optional tool 구분 강화 |
-| S7 시간축 충돌 누락 | 현재 설정과 사건 당시 설정을 분리해야 함 | incident-time evidence와 `get_tid_history` 우선순위 강화 |
-
-이 결과는 포트폴리오 관점에서 중요합니다.
-
-단순히 “정확도가 높다”가 아니라, 어떤 상황에서 agent가 실패하는지, 그 실패가 도구 누락인지, clarification 판단 문제인지, 시간축 evidence 문제인지 분리해서 볼 수 있기 때문입니다.
-
----
-
-### 6.3 Guardrail이 적용된 Live LLM Evaluation
+### 6.2 Guardrail이 적용된 Live LLM Evaluation
 
 DeepSeek 기반 live LLM 경로를 50개 synthetic case 전체에 대해 실행했습니다.
 
@@ -520,7 +484,7 @@ LLM은 parser, planner, clarification, drafting 같은 단계에서 도움을 �
 
 ---
 
-### 6.4 Live LLM Failure Analysis
+### 6.3 Live LLM Failure Analysis
 
 Live LLM 평가에서는 50개 중 35개 케이스가 통과했고, 15개 케이스가 실패했습니다.
 
@@ -571,7 +535,7 @@ LLM은 문의 문장을 이해하고 원인 후보를 찾는 데 유용합니다
 
 ---
 
-### 6.5 Evaluation Takeaway
+### 6.4 Evaluation Takeaway
 
 StoreOps Triage Agent의 평가 결과는 단순히 “정확도가 높다”로 요약하면 부족합니다.
 
