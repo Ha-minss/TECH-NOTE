@@ -1,10 +1,10 @@
 # Provider Directory Control Tower
 
-의료 제공자(provider) 디렉터리의 기존 등록 정보를 NPI Registry와 CMS 공개 데이터로 검증하고, 변경 후보를 **자동 업데이트 / 사람 검토 / 직접 확인 요청 / 변경 없음**으로 라우팅하는 Provider Directory Validation 프로젝트입니다.
+의료 제공자(provider) 디렉터리의 기존 등록 정보를 NPI Registry와 CMS 공개 데이터로 검증하고, 변경 후보를 **자동 반영 / 담당자 검토 / 직접 확인 요청 / 변경 없음**으로 나누는 디렉터리 검증 프로젝트입니다.
 
-이 프로젝트의 핵심은 “provider 정보를 최신화한다”가 아닙니다. 의료 디렉터리 정보는 이름, NPI, 진료과, 주소, 전화번호, 활성 상태처럼 운영과 신뢰에 직접 연결되기 때문에, 단순 크롤링이나 LLM 판단으로 바로 수정하면 위험합니다.
+이 프로젝트의 핵심은 단순히 “provider 정보를 최신화했다”가 아닙니다. 이름, NPI, 진료과, 주소, 전화번호, 활성 상태 같은 의료 디렉터리 정보는 환자 안내와 운영 신뢰에 직접 연결됩니다. 그래서 값이 다르다는 이유만으로 바로 수정하면 위험합니다.
 
-Provider Directory Control Tower는 기존 provider record를 공식 출처 evidence와 대조하고, 필드별 변경 후보·신뢰도·근거 출처·감사 로그를 남긴 뒤, 안전한 정책에 따라 업데이트 가능 여부를 결정하는 **검증 워크플로우**입니다.
+Provider Directory Control Tower는 기존 provider record를 공식 출처 근거와 대조하고, 필드별 변경 후보·신뢰도·근거 출처·감사 로그를 남긴 뒤, 안전한 정책에 따라 업데이트 가능 여부를 결정하는 **검증 워크플로우**입니다.
 
 ---
 
@@ -12,12 +12,12 @@ Provider Directory Control Tower는 기존 provider record를 공식 출처 evid
 
 의료 provider directory는 환자, 보험사, 플랫폼, 병원 운영팀이 모두 의존하는 중요한 데이터입니다.
 
-디렉터리에 잘못된 전화번호가 있으면 환자는 예약하지 못하고, 주소가 틀리면 방문 실패가 발생할 수 있습니다. 더 위험한 것은 provider의 active status, specialty, practice affiliation 같은 민감한 필드를 잘못 수정하는 경우입니다.
+전화번호가 틀리면 환자는 예약하지 못하고, 주소가 틀리면 잘못된 장소로 방문할 수 있습니다. 더 민감한 것은 provider의 활성 상태, 진료과, 소속 practice 같은 정보입니다. 이런 필드를 잘못 바꾸면 환자 안내, 검색 노출, 보험 청구, 내부 운영에 영향을 줄 수 있습니다.
 
-이 프로젝트는 HealthLynked 스타일의 provider/practice directory update 문제를 다음처럼 정의했습니다.
+이 프로젝트는 provider directory 업데이트 문제를 다음처럼 정의했습니다.
 
 > 기존 provider record를 공식 출처와 대조해  
-> 어떤 필드는 자동 업데이트하고, 어떤 필드는 사람 검토로 보내야 하는지 결정하자.
+> 어떤 정보는 그대로 두고, 어떤 정보는 자동 반영하며, 어떤 정보는 담당자 검토로 보내야 하는지 결정하자.
 
 입력은 기존 provider directory record입니다.
 
@@ -34,9 +34,9 @@ last_verified_date
 active_status
 ```
 
-시스템은 각 record에 대해 NPI Registry와 CMS 공개 데이터에서 evidence를 수집하고, 값을 정규화한 뒤, 기존 값과 의미 있는 차이가 있는지 확인합니다.
+시스템은 각 record에 대해 NPI Registry와 CMS 공개 데이터에서 근거를 수집합니다. 이후 전화번호, 주소, 이름, 상태값을 비교 가능한 형태로 정규화하고, 기존 값과 공식 출처의 값이 실제로 다른지 확인합니다.
 
-최종 출력은 단순 수정값이 아니라 다음 정보를 포함하는 recommendation입니다.
+최종 결과는 단순 수정값이 아니라, 아래 정보를 포함하는 recommendation입니다.
 
 ```text
 provider_id
@@ -56,17 +56,17 @@ audit_id
 
 | Action | 의미 |
 |---|---|
-| `no_change` | 공식 evidence와 비교했을 때 기존 record가 유지 가능 |
-| `auto_update` | 낮은 위험 필드에서 충분한 근거와 신뢰도가 있어 자동 업데이트 가능 |
-| `human_review` | 충돌, 고위험 필드, revoked/inactive 신호 등으로 사람 검토 필요 |
-| `outreach_required` | evidence가 부족해 provider/practice에 직접 확인 필요 |
+| `no_change` | 공식 근거와 비교했을 때 기존 record를 유지해도 됨 |
+| `auto_update` | 낮은 위험 필드에서 근거가 충분해 자동 반영 가능 |
+| `human_review` | 출처 충돌, 고위험 필드, revoked/inactive 신호 등으로 담당자 검토 필요 |
+| `outreach_required` | 공식 근거가 부족해 provider 또는 practice에 직접 확인 필요 |
 
-샘플 실행에서는 20개 provider record를 처리했고, 19건은 `no_change`, 1건은 `human_review`로 라우팅되었습니다.
+샘플 실행에서는 20개 provider record를 처리했고, 19건은 `no_change`, 1건은 `human_review`로 분류되었습니다.
 
 핵심 결론은 다음과 같습니다.
 
 > Provider directory 업데이트는 “값이 다르다”만으로 자동 수정하면 안 된다.  
-> 출처 신뢰도, 출처 간 합의, NPI 기반 identity match, 정보 최신성, 필드 위험도를 함께 보고 action을 결정해야 한다.
+> 출처 신뢰도, 출처 간 일치 여부, NPI 기반 본인 확인, 정보 최신성, 필드 위험도를 함께 보고 action을 결정해야 한다.
 
 ---
 
@@ -74,26 +74,26 @@ audit_id
 
 Provider directory 업데이트는 겉으로 보면 단순한 데이터 정제 문제처럼 보입니다.
 
-하지만 실제 운영에서는 훨씬 민감합니다. 같은 provider 이름이라도 동명이인이 있을 수 있고, 하나의 NPI가 여러 데이터셋에서 다르게 보일 수 있으며, CMS 데이터는 목적에 따라 “수정 근거”가 아니라 “검토 신호”로만 써야 하는 경우도 있습니다.
+하지만 실제 운영에서는 훨씬 민감합니다. 같은 이름을 가진 provider가 있을 수 있고, 하나의 NPI가 여러 공개 데이터셋에서 다르게 보일 수 있습니다. 또한 CMS 데이터는 어떤 경우에는 수정 근거가 아니라 “담당자가 확인해야 할 신호”로만 써야 합니다.
 
-예를 들어 전화번호나 주소는 공식 NPI Registry에서 명확히 확인되면 자동 업데이트 후보가 될 수 있습니다. 반면 provider name, specialty, practice name, active status는 잘못 바꾸면 환자 안내, 보험 청구, 검색 노출, compliance에 영향을 줄 수 있으므로 사람 검토가 필요합니다.
+예를 들어 주소나 전화번호는 공식 NPI Registry에서 명확히 확인되면 자동 반영 후보가 될 수 있습니다. 반면 provider 이름, 진료과, 소속 practice, 활성 상태는 잘못 바꾸면 영향이 크기 때문에 담당자 검토가 필요합니다.
 
 이 프로젝트가 해결하려는 문제는 다음과 같습니다.
 
 | 문제 | 왜 어려운가 | 이 프로젝트의 접근 |
 |---|---|---|
-| provider 정보가 오래될 수 있음 | 주소, 전화번호, 상태가 시간이 지나며 바뀜 | `last_verified_date`와 공식 evidence를 함께 확인 |
-| 출처마다 값이 다를 수 있음 | NPI와 CMS 데이터가 같은 역할을 하지 않음 | source agreement와 conflict를 분리 |
-| 고위험 필드를 잘못 바꾸면 위험함 | 이름, specialty, active status는 운영 영향이 큼 | high-risk field는 자동 업데이트 제한 |
-| LLM/웹 검색 결과를 그대로 쓰기 어려움 | hallucination, 페이지 오류, 비공식 출처 문제 | 기본 경로는 NPI/CMS 구조화 evidence만 사용 |
+| provider 정보가 오래될 수 있음 | 주소, 전화번호, 상태가 시간이 지나며 바뀜 | `last_verified_date`와 공식 근거를 함께 확인 |
+| 출처마다 값이 다를 수 있음 | NPI와 CMS 데이터의 목적이 다름 | 출처 간 일치와 충돌을 분리 |
+| 고위험 필드를 잘못 바꾸면 위험함 | 이름, 진료과, 활성 상태는 운영 영향이 큼 | high-risk field는 자동 반영 제한 |
+| 비공식 웹 검색 결과를 그대로 쓰기 어려움 | hallucination, 페이지 오류, 오래된 정보 문제 | 기본 경로는 NPI/CMS 구조화 근거 사용 |
 | 업데이트 근거가 남아야 함 | 운영자가 왜 바뀌었는지 확인해야 함 | evidence packet과 audit log 생성 |
 | 대량 record를 처리해야 함 | 수작업 검증만으로는 확장 어려움 | batch pipeline과 recommendation output 생성 |
 
 따라서 이 프로젝트의 목표는 세 가지입니다.
 
-첫째, provider record를 공식 출처 evidence와 대조합니다.
+첫째, 기존 provider record를 NPI Registry와 CMS 공개 데이터로 검증합니다.
 
-둘째, 필드별 변경 후보를 만들고 confidence를 계산합니다.
+둘째, 필드별 변경 후보를 만들고 신뢰도 점수를 계산합니다.
 
 셋째, 안전 정책에 따라 `no_change`, `auto_update`, `human_review`, `outreach_required`로 라우팅합니다.
 
@@ -101,7 +101,7 @@ Provider directory 업데이트는 겉으로 보면 단순한 데이터 정제 �
 
 ## 3. Data
 
-입력 데이터는 provider directory의 기존 record입니다.
+입력 데이터는 기존 provider directory record입니다.
 
 샘플 입력은 `data/input/provider_records.jsonl`에 JSONL 형태로 저장되어 있습니다.
 
@@ -112,11 +112,11 @@ Provider directory 업데이트는 겉으로 보면 단순한 데이터 정제 �
 | `provider_id` | 내부 provider 식별자 | audit, recommendation 연결 |
 | `provider_name` | provider 이름 | 공식 출처와 identity 확인 |
 | `npi` | National Provider Identifier | 핵심 identity anchor |
-| `specialty` | 주 진료과/전문분야 | NPI taxonomy, CMS provider type과 비교 |
-| `practice_name` | practice 또는 organization 이름 | affiliation/practice 검토 |
-| `address` | practice location 주소 | NPI location address와 비교 |
-| `phone` | practice location 전화번호 | NPI location phone과 비교 |
-| `website` | provider/practice website | 낮은 위험 업데이트 후보 |
+| `specialty` | 주 진료과 또는 전문분야 | NPI taxonomy, CMS provider type과 비교 |
+| `practice_name` | practice 또는 organization 이름 | 소속 기관 검토 |
+| `address` | 진료 장소 주소 | NPI location address와 비교 |
+| `phone` | 진료 장소 전화번호 | NPI location phone과 비교 |
+| `website` | provider 또는 practice website | 낮은 위험 업데이트 후보 |
 | `last_verified_date` | 마지막 검증일 | recency score 계산 |
 | `active_status` | active/inactive 등 상태 | NPI status, CMS revoked signal과 비교 |
 
@@ -137,67 +137,67 @@ Provider directory 업데이트는 겉으로 보면 단순한 데이터 정제 �
 }
 ```
 
-사용한 evidence source는 크게 두 가지입니다.
+사용한 근거 출처는 크게 두 가지입니다.
 
-| Evidence Source | 역할 |
+| 근거 출처 | 역할 |
 |---|---|
-| NPI Registry | NPI 유효성, active status, provider name, taxonomy, practice location address, phone 확인 |
-| CMS Public Data | Medicare enrollment, provider type, state, revoked provider/supplier signal 확인 |
+| NPI Registry | NPI 유효성, 활성 상태, provider 이름, taxonomy, 진료 장소 주소, 전화번호 확인 |
+| CMS Public Data | Medicare enrollment, provider type, state, revoked provider/supplier 신호 확인 |
 
-NPI Registry는 provider identity의 가장 중요한 anchor로 사용했습니다. NPI checksum과 Registry 조회 결과가 맞으면, 해당 record가 어떤 provider를 가리키는지 확인하는 강한 근거가 됩니다.
+NPI Registry는 provider identity를 확인하는 가장 중요한 기준으로 사용했습니다. NPI checksum과 Registry 조회 결과가 맞으면, 해당 record가 어떤 provider를 가리키는지 확인하는 강한 근거가 됩니다.
 
-CMS 데이터는 목적별로 다르게 사용했습니다. Medicare FFS 데이터의 provider name과 specialty는 자동 수정 근거라기보다 확인용 context로 사용했고, CMS Revoked Medicare Providers and Suppliers 데이터는 강한 사람 검토 신호로 사용했습니다.
+CMS 데이터는 목적별로 다르게 사용했습니다. Medicare FFS 데이터의 provider name과 specialty는 자동 수정 근거라기보다 참고 근거로 사용했고, CMS Revoked Medicare Providers and Suppliers 데이터는 강한 담당자 검토 신호로 사용했습니다.
 
 ---
 
 ## 4. Method / System Design
 
-이 프로젝트의 설계는 다음 원칙에서 출발합니다.
+이 프로젝트의 설계 원칙은 단순합니다.
 
-> 모든 evidence를 같은 무게로 보지 않는다.  
+> 모든 출처를 같은 무게로 보지 않는다.  
 > 모든 필드를 같은 위험도로 보지 않는다.  
 > 모든 변경을 자동으로 적용하지 않는다.
 
 전체 흐름은 다음과 같습니다.
 
 ```text
-Existing Provider Records
+기존 provider records
         ↓
-Load JSONL Input
+JSONL 입력 로드
         ↓
-Evidence Collection
+공식 근거 수집
 (NPI Registry / CMS Public Data)
         ↓
-Normalize Values
+값 정규화
         ↓
-Compare Current Record vs Evidence
+기존 record와 공식 근거 비교
         ↓
-Generate Field-level Change Candidates
+필드별 변경 후보 생성
         ↓
-Confidence Scoring
-(source reliability / agreement / entity match / recency / field safety)
+신뢰도 계산
+(source reliability / source agreement / entity match / recency / field safety)
         ↓
-Deterministic Decision Policy
+결정 정책 적용
         ↓
 no_change / auto_update / human_review / outreach_required
         ↓
-Recommendations / Evidence Packets / Audit Logs / Connector Diagnostics
+recommendations / evidence packets / audit logs / connector diagnostics
 ```
 
-### 4.1 Evidence collection
+### 4.1 근거 수집
 
 각 provider record에 대해 NPI를 기준으로 공식 출처를 조회합니다.
 
-NPI Registry에서는 다음 evidence를 수집합니다.
+NPI Registry에서는 다음 정보를 수집합니다.
 
-| Evidence | 예시 |
+| 근거 | 예시 |
 |---|---|
-| NPI validation | NPI format, checksum, Registry record 존재 여부 |
-| Active status | active/inactive |
-| Provider name | basic provider name |
-| Specialty | primary taxonomy |
-| Address | practice location address |
-| Phone | practice location phone |
+| NPI 검증 | NPI 형식, checksum, Registry record 존재 여부 |
+| 활성 상태 | active / inactive |
+| Provider 이름 | Registry의 기본 이름 |
+| 진료과 | primary taxonomy |
+| 주소 | practice location address |
+| 전화번호 | practice location phone |
 
 CMS에서는 설정한 source mode에 따라 Medicare FFS, revoked provider/supplier, facility-oriented datasets를 조회합니다.
 
@@ -211,9 +211,9 @@ CMS에서는 설정한 source mode에 따라 Medicare FFS, revoked provider/supp
 | `facility` | facility-oriented CMS datasets + revoked checks |
 | `all` | whitelisted CMS datasets를 더 넓게 조회하는 조사 모드 |
 
-### 4.2 Normalization
+### 4.2 값 정규화
 
-provider directory 데이터는 같은 값도 여러 형식으로 나타날 수 있습니다.
+Provider directory 데이터는 같은 값도 여러 형식으로 나타날 수 있습니다.
 
 예를 들어 전화번호는 다음처럼 다르게 표시될 수 있습니다.
 
@@ -223,7 +223,7 @@ provider directory 데이터는 같은 값도 여러 형식으로 나타날 수 
 3053035351
 ```
 
-이 값들은 사람이 보기에는 같지만 문자열 비교로는 다릅니다. 따라서 필드별 normalization을 먼저 수행한 뒤 비교합니다.
+사람이 보기에는 같은 번호지만 문자열 비교로는 다릅니다. 따라서 필드별로 비교 가능한 형태로 먼저 바꿉니다.
 
 | 필드 | 정규화 관점 |
 |---|---|
@@ -233,7 +233,7 @@ provider directory 데이터는 같은 값도 여러 형식으로 나타날 수 
 | `provider_name` | 대소문자와 credential 표기 차이 완화 |
 | `active_status` | active / inactive / revoked / unknown vocabulary로 매핑 |
 
-### 4.3 Confidence scoring
+### 4.3 신뢰도 계산
 
 변경 후보가 생기면 단순히 “출처가 하나 있다”로 판단하지 않고, 다섯 가지 요소를 합쳐 confidence를 계산합니다.
 
@@ -251,27 +251,27 @@ confidence =
 | 요소 | 의미 |
 |---|---|
 | Source reliability | NPI Registry, CMS Revoked 등 출처 자체의 신뢰도 |
-| Source agreement | 같은 필드에 대해 출처들이 같은 값을 말하는지 |
-| Entity match | evidence가 현재 record의 NPI와 같은 provider를 가리키는지 |
+| Source agreement | 같은 필드에 대해 여러 출처가 같은 값을 말하는지 |
+| Entity match | 근거가 현재 record의 NPI와 같은 provider를 가리키는지 |
 | Recency | 기존 record가 얼마나 오래 전에 검증되었는지 |
 | Field safety | 해당 필드를 자동 변경해도 되는 위험도 |
 
 중요한 점은 confidence가 높다고 해서 항상 자동 업데이트되는 것은 아니라는 점입니다.
 
-high-risk field는 confidence가 높아도 사람 검토가 필요할 수 있습니다.
+고위험 필드는 confidence가 높아도 사람 검토가 필요할 수 있습니다.
 
-### 4.4 Decision policy
+### 4.4 결정 정책
 
 최종 action은 deterministic policy로 결정합니다.
 
 | 조건 | Action |
 |---|---|
 | 변경 후보가 없음 | `no_change` |
-| 낮은 위험 필드이고, confidence가 기준 이상이며, conflict가 없음 | `auto_update` |
+| 낮은 위험 필드이고, confidence가 기준 이상이며, 출처 충돌이 없음 | `auto_update` |
 | 출처 충돌이 있음 | `human_review` |
 | high-risk field 변경 후보가 있음 | `human_review` |
 | revoked/inactive 신호가 있음 | `human_review` |
-| evidence가 부족하거나 직접 확인이 필요함 | `outreach_required` |
+| 근거가 부족하거나 직접 확인이 필요함 | `outreach_required` |
 
 기본 설정은 다음과 같습니다.
 
@@ -283,13 +283,13 @@ high-risk field는 confidence가 높아도 사람 검토가 필요할 수 있습
 | High-risk fields | active_status, practice_name, provider_name, specialty |
 | Stale after days | 365 |
 
-이 정책 때문에 시스템은 보수적으로 동작합니다. 특히 active status, provider name, specialty 같은 필드는 잘못 바꾸면 운영 리스크가 크기 때문에 자동 업데이트하지 않고 사람 검토로 보냅니다.
+이 정책 때문에 시스템은 보수적으로 동작합니다. 특히 active status, provider name, specialty 같은 필드는 잘못 바꾸면 운영 리스크가 크기 때문에 자동 반영하지 않고 담당자 검토로 보냅니다.
 
 ---
 
 ## 5. Implementation
 
-구현은 provider record를 읽고, evidence를 수집하고, recommendation을 생성하는 batch pipeline으로 구성했습니다.
+구현은 provider record를 읽고, 공식 근거를 수집하고, recommendation을 생성하는 batch pipeline으로 구성했습니다.
 
 주요 모듈은 다음과 같습니다.
 
@@ -298,10 +298,10 @@ high-risk field는 confidence가 높아도 사람 검토가 필요할 수 있습
 | `run_pipeline.py` | CLI entrypoint | 전체 파이프라인 실행 |
 | `repository.py` | JSONL repository | 기존 provider record 읽기/쓰기 |
 | `npi.py` | NPI 유효성·NPI Registry helper | NPI 조회와 checksum 검증 |
-| `sources.py` | NPI Registry client | 공식 NPI evidence 수집 |
-| `cms.py` | CMS public data connector | CMS FFS/Revoked/facility evidence 수집 |
+| `sources.py` | NPI Registry client | 공식 NPI 근거 수집 |
+| `cms.py` | CMS public data connector | CMS FFS/Revoked/facility 근거 수집 |
 | `normalize.py` | 필드별 정규화 | 전화번호, 주소, 이름, 상태 비교 준비 |
-| `confidence.py` | confidence 계산 | 출처 신뢰도와 합의도 점수화 |
+| `confidence.py` | confidence 계산 | 출처 신뢰도와 일치도 점수화 |
 | `decision.py` | 변경 후보와 action 결정 | auto_update/human_review 라우팅 |
 | `report.py` | 결과 export | recommendation, audit, summary 저장 |
 | `scripts/evaluate_pipeline.py` | explicit-input 평가 | ground truth가 있을 때 action 비교 |
@@ -343,13 +343,13 @@ high-risk field는 confidence가 높아도 사람 검토가 필요할 수 있습
 | `auto_update` | 0 |
 | `outreach_required` | 0 |
 
-샘플 실행에서 대부분의 record는 NPI Registry와 CMS evidence로 기존 정보가 확인되어 `no_change`로 분류되었습니다.
+샘플 실행에서 대부분의 record는 NPI Registry와 CMS 근거로 기존 정보가 확인되어 `no_change`로 분류되었습니다.
 
 1건은 CMS Revoked Medicare Providers and Suppliers에서 revoked signal이 발견되어 `human_review`로 라우팅되었습니다.
 
 ### 6.2 Evidence Summary
 
-| Evidence source | Evidence count |
+| 근거 출처 | Evidence count |
 |---|---:|
 | NPI Registry | 120 |
 | CMS Medicare FFS Public Provider Enrollment | 32 |
@@ -381,7 +381,7 @@ CMS lookup에서는 9건이 CMS row/evidence를 찾았고, 11건은 whitelist da
 | NPI | `1386606325` |
 | 변경 후보 필드 | `active_status` |
 | 기존 값 | `active` |
-| 새 evidence 값 | `revoked` |
+| 새 근거 값 | `revoked` |
 | Supporting source | CMS Revoked Medicare Providers and Suppliers |
 | Confidence | 0.704 |
 | Recommended action | `human_review` |
@@ -389,12 +389,12 @@ CMS lookup에서는 9건이 CMS row/evidence를 찾았고, 11건은 whitelist da
 
 이 케이스가 자동 업데이트되지 않은 이유는 명확합니다.
 
-`active_status`는 high-risk field이고, revoked signal은 provider directory에서 매우 민감한 상태 변경입니다. 따라서 evidence가 있더라도 자동으로 active status를 바꾸지 않고, 담당자가 source를 확인하도록 `human_review`로 보냈습니다.
+`active_status`는 high-risk field이고, revoked signal은 provider directory에서 매우 민감한 상태 변경입니다. 따라서 근거가 있더라도 자동으로 active status를 바꾸지 않고, 담당자가 source를 확인하도록 `human_review`로 보냈습니다.
 
 이 결과는 시스템의 보수적 정책을 보여줍니다.
 
 > 낮은 위험 필드의 명확한 변경은 자동화 후보가 될 수 있지만,  
-> provider 상태나 전문분야처럼 위험한 변경은 사람 검토를 거쳐야 한다.
+> provider 상태나 진료과처럼 위험한 변경은 사람 검토를 거쳐야 한다.
 
 ### 6.4 Output Quality
 
@@ -416,27 +416,27 @@ CMS lookup에서는 9건이 CMS row/evidence를 찾았고, 11건은 whitelist da
 
 ## 7. Key Design Decisions
 
-### 7.1 LLM보다 공식 source evidence를 기본 경로로 사용했다
+### 7.1 LLM보다 공식 출처 근거를 기본 경로로 사용했다
 
 Provider directory는 의료 정보와 연결되기 때문에 비공식 웹 검색이나 LLM 생성값을 바로 업데이트 근거로 쓰면 위험합니다.
 
-그래서 기본 경로는 NPI Registry와 CMS public data 같은 구조화된 공식 출처로 제한했습니다. LLM은 향후 비정형 웹 evidence 추출에 보조적으로 쓸 수 있지만, 최종 decision은 deterministic policy가 담당해야 합니다.
+그래서 기본 경로는 NPI Registry와 CMS public data 같은 구조화된 공식 출처로 제한했습니다. LLM은 향후 비정형 웹 근거 추출에 보조적으로 쓸 수 있지만, 최종 decision은 deterministic policy가 담당해야 합니다.
 
 ### 7.2 NPI를 identity anchor로 사용했다
 
-provider name은 동명이인과 credential 표기 차이가 있을 수 있습니다. 주소나 전화번호도 시간이 지나며 바뀔 수 있습니다.
+provider 이름은 동명이인과 credential 표기 차이가 있을 수 있습니다. 주소나 전화번호도 시간이 지나며 바뀔 수 있습니다.
 
-반면 NPI는 provider identity를 확인하는 가장 중요한 anchor입니다. 따라서 NPI format, checksum, NPI Registry record 존재 여부를 먼저 확인하고, 이후 name, specialty, address, phone evidence를 해석했습니다.
+반면 NPI는 provider identity를 확인하는 가장 중요한 기준입니다. 따라서 NPI format, checksum, NPI Registry record 존재 여부를 먼저 확인하고, 이후 이름, 진료과, 주소, 전화번호 근거를 해석했습니다.
 
-### 7.3 같은 evidence라도 필드에 따라 다르게 취급했다
+### 7.3 같은 근거라도 필드에 따라 다르게 취급했다
 
-전화번호와 주소는 상대적으로 자동 업데이트하기 쉬운 필드입니다. 반면 active status, provider name, specialty, practice name은 잘못 바꾸면 영향이 큽니다.
+전화번호와 주소는 상대적으로 자동 업데이트하기 쉬운 필드입니다. 반면 활성 상태, provider 이름, 진료과, practice 이름은 잘못 바꾸면 영향이 큽니다.
 
 그래서 field safety를 따로 두고, auto-update allowed field를 address, phone, website로 제한했습니다.
 
-### 7.4 CMS evidence는 자동 수정 근거와 검토 신호를 구분했다
+### 7.4 CMS 근거는 자동 수정 근거와 검토 신호를 구분했다
 
-CMS Medicare FFS 데이터는 provider name이나 specialty를 확인하는 context로 유용하지만, 이를 곧바로 directory의 이름·전문분야 자동 수정 근거로 쓰는 것은 위험합니다.
+CMS Medicare FFS 데이터는 provider 이름이나 진료과를 확인하는 참고 근거로 유용하지만, 이를 곧바로 directory의 이름·전문분야 자동 수정 근거로 쓰는 것은 위험합니다.
 
 반면 CMS Revoked dataset은 강한 위험 신호입니다. revoked signal이 있으면 자동 수정이 아니라 human review로 보냅니다.
 
@@ -450,7 +450,7 @@ CMS Medicare FFS 데이터는 provider name이나 specialty를 확인하는 cont
 
 Provider directory 운영에서는 “바꿀 것 없음”도 중요한 판단입니다.
 
-NPI Registry와 CMS evidence로 현재 record가 확인되면 `no_change` recommendation을 남기고, audit log에 어떤 source를 조회했는지 기록했습니다. 이렇게 해야 나중에 “왜 업데이트하지 않았는가”도 설명할 수 있습니다.
+NPI Registry와 CMS 근거로 현재 record가 확인되면 `no_change` recommendation을 남기고, audit log에 어떤 source를 조회했는지 기록했습니다. 이렇게 해야 나중에 “왜 업데이트하지 않았는가”도 설명할 수 있습니다.
 
 ---
 
@@ -478,7 +478,7 @@ NPI Registry와 CMS evidence로 현재 record가 확인되면 `no_change` recomm
 
 첫째, 샘플 실행은 20개 provider record 기준입니다. 더 큰 규모의 provider directory에서 rate limit, retry, caching, batch scheduling을 추가로 검증해야 합니다.
 
-둘째, NPI Registry와 CMS public data는 강한 공식 evidence이지만, provider website나 state medical board 같은 추가 출처가 필요한 케이스도 있습니다.
+둘째, NPI Registry와 CMS public data는 강한 공식 근거이지만, provider website나 state medical board 같은 추가 출처가 필요한 케이스도 있습니다.
 
 셋째, practice affiliation, website, provider availability 같은 정보는 NPI/CMS만으로 충분히 확인하기 어렵습니다. 이 경우 outreach workflow가 필요합니다.
 
@@ -597,9 +597,9 @@ provider-directory-control-tower/
 
 이 프로젝트는 의료 provider directory 업데이트를 단순 데이터 정제가 아니라, 안전한 운영 의사결정 문제로 다룹니다.
 
-첫째, 기존 provider record를 NPI Registry와 CMS public data 같은 공식 source evidence로 검증했습니다.
+첫째, 기존 provider record를 NPI Registry와 CMS public data 같은 공식 근거로 검증했습니다.
 
-둘째, NPI checksum과 Registry lookup을 통해 provider identity를 먼저 고정하고, 이후 name, specialty, address, phone, active status를 비교했습니다.
+둘째, NPI checksum과 Registry lookup을 통해 provider identity를 먼저 고정하고, 이후 이름, 진료과, 주소, 전화번호, 활성 상태를 비교했습니다.
 
 셋째, provider field를 모두 같은 위험도로 보지 않고, address/phone/website와 active_status/provider_name/specialty/practice_name을 다르게 취급했습니다.
 
@@ -613,4 +613,4 @@ provider-directory-control-tower/
 
 마지막으로, 실제 production에서는 기존 directory DB를 읽기 전용으로 연결하고, 결과를 `update_candidates`, `review_queue`, `outreach_queue`, `audit_log` 같은 staging table에 저장하는 구조로 확장할 수 있습니다.
 
-이 프로젝트의 핵심은 단순히 provider 정보를 업데이트한 것이 아니라, **공식 evidence와 deterministic policy를 이용해 의료 디렉터리 변경을 안전하게 검토 가능한 recommendation workflow로 바꾼 것**입니다.
+이 프로젝트의 핵심은 단순히 provider 정보를 업데이트한 것이 아니라, **공식 근거와 deterministic policy를 이용해 의료 디렉터리 변경을 안전하게 검토 가능한 recommendation workflow로 바꾼 것**입니다.
