@@ -165,3 +165,13 @@ DID, Fixed Effects, Event Study, Robustness 검증을 통해 정책 이후 SO₂
 * 핵심 관점: 가격탄력성은 단일 회귀 계수보다 식별 전략과 검증 과정이 중요함
 * 프로젝트 폴더: [`dominicks-price-elasticity-iv-dml`](./dominicks-price-elasticity-iv-dml)
 
+
+---
+
+### Mobile Game LTV Production-Style ML Pipeline
+
+Production-style ML pipeline for mobile game LTV prediction: raw data validation, modeling grain validation, feature generation, two-stage XGBoost final refit, prediction artifacts, model card, and UA business analysis.
+
+* Key concepts: ML Pipeline, LTV Forecasting, Feature Engineering, Two-Stage Model, XGBoost, Optuna, Time-Based Validation, Business Analysis
+* Project folder: [mobile-game-ltv-pipeline](./mobile-game-ltv-pipeline)
+
