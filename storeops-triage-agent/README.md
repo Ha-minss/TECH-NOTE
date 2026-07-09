@@ -383,15 +383,33 @@ LLM을 parser/planner/checklist/clarification/drafting에 일부 넣되, 같은 
 
 ## 6. Evaluation
 
-평가는 두 층으로 나누었습니다.
+StoreOps Triage Agent의 평가는 두 층으로 나누어 진행했습니다.
 
-첫째, synthetic dataset 자체가 논리적으로 맞게 생성되었는지 확인했습니다.
+첫 번째는 **평가 데이터 자체가 논리적으로 맞게 만들어졌는지** 확인하는 단계입니다.  
+두 번째는 **agent가 그 데이터에서 기대 상태와 원인 후보를 제대로 판단하는지** 확인하는 단계입니다.
 
-둘째, agent가 해당 dataset에서 기대 상태와 원인을 맞히는지 평가했습니다.
+이 프로젝트에서 중요한 평가는 단순히 “정답을 많이 맞혔는가”가 아닙니다. 결제 운영 장애에서는 원인을 틀리는 것보다 더 위험한 일이 있습니다. 바로 **근거 없이 원인을 단정하거나, 결제·환불·설정 변경 같은 금지 행동을 제안하는 것**입니다.
+
+따라서 평가는 다음 관점을 함께 봤습니다.
+
+| 평가 관점 | 확인하는 것 |
+|---|---|
+| 상태 판단 | `READY_FOR_REVIEW`, `NEEDS_CLARIFICATION`, `DEGRADED_REVIEW`, `CONFLICT_REVIEW`를 맞게 판단했는가 |
+| 원인 판단 | `duplicate_tid`, `van_merchant_registration_missing` 등 주요 원인 후보를 맞게 찾았는가 |
+| 필수 도구 조회 | SOP가 요구하는 read-only tool을 빠뜨리지 않았는가 |
+| 근거 기반 판단 | evidence citation 없이 원인을 단정하지 않았는가 |
+| 안전성 | 결제 실행, 환불, 설정 변경 같은 금지 행동을 제안하지 않았는가 |
+| 보류 판단 | 정보 부족, 도구 실패, 근거 충돌 상황에서 무리하게 단정하지 않았는가 |
+| LLM 추적성 | LLM이 어떤 단계에서 사용되었고, fallback이 있었는지 추적 가능한가 |
+
+---
 
 ### 6.1 Synthetic Dataset Validation
 
-합성 데이터 검증 결과는 다음과 같습니다.
+먼저 50개 synthetic dataset 자체가 논리적으로 맞게 만들어졌는지 검증했습니다.
+
+이 검증은 agent 성능 평가가 아닙니다.  
+SQLite fixture에 들어 있는 raw operational facts가 golden label의 원인과 상태를 설명할 수 있는지 확인하는 데이터 검증 단계입니다.
 
 | 항목 | 결과 |
 |---|---:|
@@ -399,13 +417,20 @@ LLM을 parser/planner/checklist/clarification/drafting에 일부 넣되, 같은 
 | Passed | 50 |
 | Failed | 0 |
 
-이 검증은 agent 성능 평가가 아니라, raw operational facts가 의도한 원인/상태 label과 논리적으로 일치하는지 확인하는 row-level validation입니다.
+이 결과는 평가 데이터가 깨져 있지 않다는 뜻입니다.
 
-즉, 평가 데이터 자체가 깨져 있지 않은지 먼저 확인한 것입니다.
+즉, 각 케이스의 운영 데이터가 의도한 원인과 상태를 설명할 수 있도록 구성되어 있고, agent는 이 데이터를 바탕으로 실제로 근거를 조회하고 원인을 판단해야 합니다.
+
+중요한 점은 raw SQLite table 안에 정답 원인을 넣지 않았다는 것입니다.  
+정답 label은 golden set에만 있고, agent가 접근하는 운영 테이블에는 단말기, TID, 승인 실패 로그, VAN 등록 상태, POS-Front 연결 로그 같은 운영 사실만 들어 있습니다.
+
+따라서 agent는 정답을 읽는 것이 아니라, 운영 fact를 조회하고 조합해 원인 후보를 판단해야 합니다.
+
+---
 
 ### 6.2 Deterministic Evaluation
 
-Deterministic benchmark 결과는 다음과 같습니다.
+규칙 기반 parser, planner, reasoner, safety gate를 사용한 deterministic benchmark 결과는 다음과 같습니다.
 
 | 지표 | 결과 |
 |---|---:|
@@ -418,46 +443,162 @@ Deterministic benchmark 결과는 다음과 같습니다.
 | Tool failure recovery rate | 1.00 |
 | Operator correction candidate count | 12 |
 
-이 결과에서 가장 중요한 지표는 `unsupported_claim_count = 0`과 `abstention_safety_accuracy = 1.00`입니다.
+이 결과에서 가장 중요한 값은 `unsupported_claim_count = 0`과 `abstention_safety_accuracy = 1.00`입니다.
 
-즉, 시스템은 틀릴 수는 있지만, 근거 없이 원인을 단정하지 않도록 설계되어 있습니다.
+즉, 시스템은 아직 모든 케이스를 완벽히 통과하지는 못했지만, **근거 없이 원인을 단정하지 않도록 설계되어 있음**을 확인했습니다.
 
-38/50 통과는 완성도가 아주 높은 최종 운영 시스템이라는 뜻은 아닙니다. 특히 failing case는 대부분 required tool recall, clarification state, tool failure handling, temporal conflict 처리에서 발생했습니다.
+`cause_accuracy = 0.98`은 원인 후보 판단이 대부분 맞았다는 뜻입니다. 하지만 `passed_cases = 38/50`이라는 결과는 아직 운영 수준의 완성 시스템이라기보다, 남은 failure mode를 분석하고 개선해야 하는 MVP라는 뜻입니다.
 
-대표 failing category는 다음과 같습니다.
+대표 실패 양상은 다음과 같습니다.
 
 | 실패 양상 | 의미 | 개선 방향 |
 |---|---|---|
 | S5 모호 문의에서 required tool 누락 | 문의가 짧을 때 baseline evidence 계획이 부족 | clarification 전 최소 조회 정책 보강 |
 | S6A 필수 도구 실패 상태 차이 | 필수 tool failure와 clarification 우선순위 충돌 | safety transition 우선순위 조정 |
-| S6B 선택 도구 실패에서 과도한 degraded 처리 | 핵심 evidence는 있는데 선택 tool 실패가 상태를 흔듦 | required/supporting/optional 분리 강화 |
-| S7 시간축 충돌 누락 | 현재 설정과 사건 당시 설정을 분리해야 함 | incident-time evidence 우선순위 강화 |
+| S6B 선택 도구 실패에서 과도한 degraded 처리 | 핵심 evidence는 있는데 선택 tool 실패가 상태를 흔듦 | required / supporting / optional tool 구분 강화 |
+| S7 시간축 충돌 누락 | 현재 설정과 사건 당시 설정을 분리해야 함 | incident-time evidence와 `get_tid_history` 우선순위 강화 |
 
-이 점은 오히려 포트폴리오 관점에서 중요합니다. 단순히 “정확도 높음”이 아니라, 어떤 failure mode가 남아 있고 어떻게 개선해야 하는지 분석 가능한 구조이기 때문입니다.
+이 결과는 포트폴리오 관점에서 중요합니다.
 
-### 6.3 LLM Smoke Test
+단순히 “정확도가 높다”가 아니라, 어떤 상황에서 agent가 실패하는지, 그 실패가 도구 누락인지, clarification 판단 문제인지, 시간축 evidence 문제인지 분리해서 볼 수 있기 때문입니다.
 
-Live LLM smoke test는 1개 케이스 기준으로 수행되었습니다.
+---
+
+### 6.3 Guardrail이 적용된 Live LLM Evaluation
+
+DeepSeek 기반 live LLM 경로를 50개 synthetic case 전체에 대해 실행했습니다.
+
+실행 명령은 다음과 같습니다.
+
+```powershell
+python -m storeops.evals.llm_runner `
+  --provider live `
+  --dataset data/golden/offline_payment_ops_cases_50.json `
+  --fixture-db data/fixtures/offline_payment_ops_synthetic_50.sqlite3 `
+  --output-dir data/eval_reports/llm/deepseek_synthetic_50
+```
+
+평가 결과는 다음과 같습니다.
 
 | 지표 | 결과 |
 |---|---:|
-| Total cases | 1 |
-| State accuracy | 1.00 |
-| Cause accuracy | 1.00 |
-| Required tool recall | 0.75 |
+| Total cases | 50 |
+| Passed cases | 35 |
+| State accuracy | 0.92 |
+| Cause accuracy | 0.98 |
+| Required tool recall | 0.866 |
 | Forbidden action safety | 1.00 |
-| Evidence citation coverage | 1.00 |
+| Evidence citation coverage | 0.98 |
+| Abstention safety accuracy | 1.00 |
 | Clarification safety | 1.00 |
 | Merchant response safety | 1.00 |
-| LLM trace coverage | 1.00 |
-| Fallback rate | 0.00 |
+| LLM trace coverage | 0.96 |
+| Fallback rate | 1.00 |
 | Unsupported claim count | 0 |
 
-LLM path는 원인과 상태는 맞췄지만, `get_activation_history`를 빠뜨려 required tool recall이 0.75였습니다.
+이 결과는 실제 LLM을 넣었을 때도 원인 후보와 상태 판단이 강하게 유지되었음을 보여줍니다.
 
-이 결과는 LLM을 운영에 그대로 맡기면 안 되는 이유를 보여줍니다.
+`state_accuracy`는 0.92, `cause_accuracy`는 0.98이었습니다.  
+또한 `unsupported_claim_count`는 0이었습니다. 즉, LLM 경로에서도 근거 없는 원인 단정은 발생하지 않았습니다.
 
-LLM은 문장을 잘 이해할 수 있지만, SOP가 요구하는 모든 필수 evidence를 빠짐없이 고르는 것은 별도로 검증해야 합니다. 그래서 이 프로젝트는 LLM path에도 tool catalog, allowed data_need, prompt contract, safety gate를 유지했습니다.
+특히 중요한 안전 지표는 다음입니다.
+
+| 안전 지표 | 결과 | 의미 |
+|---|---:|---|
+| Forbidden action safety | 1.00 | 결제 실행, 환불, 설정 변경 같은 금지 행동을 제안하지 않음 |
+| Abstention safety accuracy | 1.00 | 근거가 부족한 경우 무리하게 단정하지 않음 |
+| Clarification safety | 1.00 | 모호한 문의에서 추가 확인 질문으로 보류 가능 |
+| Merchant response safety | 1.00 | 사장님에게 위험한 안내 문구를 생성하지 않음 |
+| Evidence citation coverage | 0.98 | 대부분의 원인 판단이 evidence와 연결됨 |
+
+다만 이 결과를 “LLM만으로 50개 케이스를 완벽하게 처리했다”고 해석하면 안 됩니다.
+
+`fallback_rate = 1.00`이기 때문에, 이 평가는 순수 LLM 단독 평가가 아니라 **tool catalog, allowed data_need, deterministic fallback, safety gate가 함께 작동한 guarded LLM evaluation**으로 해석해야 합니다.
+
+즉, 이 프로젝트에서 LLM은 단독 판단자가 아닙니다.  
+LLM은 parser, planner, clarification, drafting 같은 단계에서 도움을 주지만, 실제 운영 안전성은 read-only tool, evidence rule, safety gate, fallback이 함께 보장합니다.
+
+---
+
+### 6.4 Live LLM Failure Analysis
+
+Live LLM 평가에서는 50개 중 35개 케이스가 통과했고, 15개 케이스가 실패했습니다.
+
+실패 케이스의 대부분은 상태나 원인 자체를 완전히 틀렸다기보다, **SOP가 요구하는 필수 조회 도구를 일부 빠뜨린 것**에서 발생했습니다.
+
+실패 케이스에서 누락된 required tool은 다음과 같습니다.
+
+| 누락된 도구 | 누락 횟수 |
+|---|---:|
+| `get_store_info` | 7 |
+| `get_terminal_identity` | 3 |
+| `get_activation_history` | 3 |
+| `get_support_route` | 3 |
+| `get_recent_approval_errors` | 2 |
+| `get_tid_config` | 2 |
+| `get_terminals` | 1 |
+| `get_tid_history` | 1 |
+
+대표 실패 패턴은 다음과 같습니다.
+
+| 케이스 유형 | 발생한 문제 | 해석 |
+|---|---|---|
+| VAN 등록 미완료 케이스 | 원인과 상태는 맞췄지만 `get_terminal_identity` 누락 | VAN 문제에서도 단말기 identity 확인이 SOP상 필요 |
+| 모호 문의 케이스 | `get_store_info` 누락 또는 `NEEDS_CLARIFICATION` 대신 `DEGRADED_REVIEW` | clarification 전 최소 매장 정보 조회 정책 필요 |
+| 필수 도구 실패 케이스 | `get_activation_history` 누락 | degraded 상태에서도 어떤 필수 도구가 실패했는지 명확히 기록 필요 |
+| 선택 도구 실패 케이스 | `get_support_route` 누락 | 원인 판단 후 운영 이관 경로 조회를 별도 required step으로 강제 필요 |
+| 시간축 충돌 케이스 | `get_tid_history`, `get_activation_history`, `get_recent_approval_errors` 누락 | 현재 상태와 사건 당시 상태를 분리하는 incident-time 조회 강화 필요 |
+
+이 분석이 중요한 이유는 LLM의 한계가 명확히 보이기 때문입니다.
+
+LLM은 문의 문장을 이해하고 원인 후보를 찾는 데 유용합니다. 하지만 SOP가 요구하는 모든 조회 도구를 빠짐없이 고르는 능력은 별도로 검증해야 합니다.
+
+따라서 이 프로젝트는 LLM을 그대로 운영에 맡기지 않고, 다음 장치를 유지했습니다.
+
+| 안전 장치 | 역할 |
+|---|---|
+| Tool catalog | LLM이 사용할 수 있는 도구 목록 제한 |
+| Allowed data_need | LLM이 요청할 수 있는 확인 항목 제한 |
+| Required tool checklist | 원인 유형별 필수 조회 도구 관리 |
+| Deterministic fallback | LLM 출력이 부족할 때 규칙 기반 경로로 보완 |
+| Safety gate | 근거 부족, 도구 실패, 충돌 상황에서 단정 방지 |
+| Evaluation report | 누락 도구와 failure mode를 케이스 단위로 기록 |
+
+결론적으로 Live LLM 평가는 다음 메시지를 보여줍니다.
+
+> LLM은 결제 장애 문의를 이해하고 원인 후보를 찾는 데 유용하다.  
+> 하지만 운영 SOP가 요구하는 모든 evidence를 빠짐없이 수집하게 하려면 tool checklist, fallback, safety gate, evaluation이 반드시 필요하다.
+
+---
+
+### 6.5 Evaluation Takeaway
+
+StoreOps Triage Agent의 평가 결과는 단순히 “정확도가 높다”로 요약하면 부족합니다.
+
+이 프로젝트가 보여주는 핵심은 다음입니다.
+
+| 평가 결과 | 의미 |
+|---|---|
+| Synthetic validation 50/50 통과 | 평가 데이터 자체가 논리적으로 유효함 |
+| Deterministic state accuracy 0.90 | 규칙 기반 workflow가 대부분의 상태를 맞춤 |
+| Deterministic cause accuracy 0.98 | evidence 기반 원인 판단이 강하게 작동 |
+| Live LLM state accuracy 0.92 | LLM을 넣어도 상태 판단이 유지됨 |
+| Live LLM cause accuracy 0.98 | LLM 경로에서도 원인 후보 판단이 강함 |
+| Required tool recall 0.866 | LLM이 일부 SOP 필수 도구를 빠뜨림 |
+| Forbidden action safety 1.00 | 위험한 결제/환불/설정 변경 제안 없음 |
+| Unsupported claim count 0 | 근거 없는 원인 단정 없음 |
+| Fallback rate 1.00 | LLM 단독이 아니라 guardrail이 붙은 평가임 |
+
+따라서 최종 해석은 다음과 같습니다.
+
+> StoreOps Triage Agent는 결제 장애 문의를 evidence-backed case로 바꾸는 데 효과적이었다.  
+> 다만 실제 운영 수준으로 가기 위해서는 required tool checklist, clarification policy, incident-time evidence, support route 조회를 더 강화해야 한다.
+
+이 결과는 LLM Agent를 운영 업무에 적용할 때 중요한 교훈을 보여줍니다.
+
+> LLM을 넣는 것보다 중요한 것은,  
+> LLM이 빠뜨릴 수 있는 운영 근거를 어떻게 강제하고,  
+> 근거 부족 상황에서 어떻게 안전하게 멈추게 할 것인가이다.
 
 ---
 
