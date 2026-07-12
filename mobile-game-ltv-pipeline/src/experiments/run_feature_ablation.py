@@ -24,6 +24,7 @@ FEATURE_SETS = [
     "xgb_velocity_ratio_features",
     "xgb_frequency_interaction_features",
     "xgb_target_encoding_features",
+    "xgb_all_derived_features",
 ]
 BASE_CATEGORICAL_FEATURES = ["platform", "country_tier", "channel_tier", "top_network", "top_ad_placement"]
 EXCLUDED_FEATURES = ["user_id", "install_day", TARGET_COLUMN]
@@ -266,9 +267,15 @@ def get_feature_set_frame(
     if feature_set == "xgb_frequency_interaction_features":
         return train_out, valid_out, metadata
 
-    if feature_set == "xgb_target_encoding_features":
+    if feature_set in {"xgb_target_encoding_features", "xgb_all_derived_features"}:
         train_out, valid_out, te_meta = add_target_encoding_features(train_out, valid_out)
         metadata.update(te_meta)
+        if feature_set == "xgb_all_derived_features":
+            metadata["note"] = (
+                metadata.get("note", "")
+                + " This explicit all-derived set includes time buckets, velocity ratios, "
+                + "frequency/count interaction features, and leakage-safe target encodings."
+            ).strip()
         return train_out, valid_out, metadata
 
     raise ValueError(f"Unknown feature set: {feature_set}")
@@ -476,6 +483,7 @@ def write_report(path: Path, metrics_df: pd.DataFrame, diagnostics: dict[str, An
             f"- Best top 10% revenue capture improvement versus current_full: {capture_best}.",
             f"- Target encoding result: target encoding RMSLE={te_rmsle:.6f}, top 10% capture={te_capture:.2%}. Current full RMSLE={current_rmsle:.6f}. Because target encodings are train-split fitted and not OOF, validation mapping is leakage-safe but train-side overfit risk remains; this should be revisited with rolling/OOF encoding later.",
             f"- Final feature set candidate: `{best_rmsle_feature_set}` for the next modeling stage, unless the business goal prioritizes top-decile capture over RMSLE.",
+            "- `xgb_all_derived_features` is an explicit full derived-feature set: time buckets + velocity ratios + frequency/count interactions + leakage-safe target encodings.",
             "",
             "## Prediction Checks",
             "",
