@@ -175,3 +175,11 @@ Production-style ML pipeline for mobile game LTV prediction: raw data validation
 * Key concepts: ML Pipeline, LTV Forecasting, Feature Engineering, Two-Stage Model, XGBoost, Optuna, Time-Based Validation, Business Analysis
 * Project folder: [mobile-game-ltv-pipeline](./mobile-game-ltv-pipeline)
 
+---
+
+### Gamelytics A/B Analysis
+
+Reproducible mobile game promotion A/B analysis: ARPU decomposition, payer conversion testing, bootstrap uncertainty, permutation test, whale sensitivity, and supporting retention appendix.
+
+* Key concepts: A/B Testing, ARPU, Conversion Rate, Bootstrap Confidence Interval, Permutation Test, Revenue Concentration, Retention Analysis
+* Project folder: [`gamelytics-ab-analysis`](./gamelytics-ab-analysis)
